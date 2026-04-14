@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Notnott — Jadwal & Keuangan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    blush: { 50:'#FFF8FA',100:'#FFF0F3',200:'#FFE0E8',300:'#FFC8D6',400:'#FFA0B8',500:'#F48FB1',600:'#E57399' },
+                    berry: { DEFAULT:'#FF6B81', light:'#FF9DAD', pale:'#FFE0E8', dark:'#E05068' },
+                    leaf: { DEFAULT:'#7CB342', light:'#AED581', pale:'#E8F5D8' },
+                    coral: { DEFAULT:'#E8847C', light:'#F4B8B2', pale:'#FDEEEE' },
+                    lav: { DEFAULT:'#C9A0DC', light:'#E0C8EE', pale:'#F5ECF9' },
+                    gold: { DEFAULT:'#E8B87A', light:'#F0D4A8', pale:'#FBF0DE' },
+                    bark: { DEFAULT:'#4A2C3D', light:'#7D5A6E', muted:'#9E7B8E' },
+                },
+                fontFamily: { sans:['Nunito','sans-serif'] },
+            }
+        }
+    }
+    </script>
+    <style>
+        :root { --bg:#FFF0F3; --card:#FFFFFF; --border:#FFE0E8; --accent:#FF6B81; --primary:#F48FB1; }
+        *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+        body{font-family:'Nunito',sans-serif;background:var(--bg);color:#4A2C3D;overflow-x:hidden}
+        ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#FFC8D6;border-radius:4px}
+
+        #splash{position:fixed;inset:0;z-index:100;background:linear-gradient(160deg,#FFE0E8 0%,#FFC8D6 40%,#FFA0B8 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;transition:opacity .6s,transform .6s}
+        #splash.hide{opacity:0;transform:scale(1.08);pointer-events:none}
+        #splash .splash-title{font-size:2.6rem;font-weight:900;color:#4A2C3D;letter-spacing:-1px}
+        #splash .splash-sub{color:#7D5A6E;font-size:.85rem;font-weight:600}
+        .splash-straw{animation:splashBounce 1.2s ease-in-out infinite alternate}
+        @keyframes splashBounce{0%{transform:translateY(0) rotate(-3deg)}100%{transform:translateY(-10px) rotate(3deg)}}
+
+        .blob{position:fixed;border-radius:50%;pointer-events:none;z-index:0;filter:blur(80px);opacity:.2}
+        .blob-1{width:280px;height:280px;background:#FFC8D6;top:-70px;right:-50px;animation:bf1 20s ease-in-out infinite}
+        .blob-2{width:220px;height:220px;background:#E0C8EE;bottom:120px;left:-70px;animation:bf2 24s ease-in-out infinite}
+        .blob-3{width:180px;height:180px;background:#FFB6C8;top:45%;right:-30px;animation:bf3 17s ease-in-out infinite}
+        @keyframes bf1{0%,100%{transform:translate(0,0)}50%{transform:translate(-35px,55px)}}
+        @keyframes bf2{0%,100%{transform:translate(0,0)}50%{transform:translate(45px,-35px)}}
+        @keyframes bf3{0%,100%{transform:translate(0,0)}50%{transform:translate(-25px,-45px)}}
+
+        .float-straw{position:fixed;pointer-events:none;z-index:1;opacity:.12}
+        .float-straw:nth-child(1){top:15%;left:8%;animation:fs1 18s ease-in-out infinite;transform:rotate(-15deg)}
+        .float-straw:nth-child(2){top:55%;right:5%;animation:fs2 22s ease-in-out infinite;transform:rotate(20deg)}
+        .float-straw:nth-child(3){bottom:25%;left:12%;animation:fs3 16s ease-in-out infinite;transform:rotate(-25deg)}
+        @keyframes fs1{0%,100%{transform:translateY(0) rotate(-15deg)}50%{transform:translateY(-30px) rotate(-5deg)}}
+        @keyframes fs2{0%,100%{transform:translateY(0) rotate(20deg)}50%{transform:translateY(25px) rotate(30deg)}}
+        @keyframes fs3{0%,100%{transform:translateY(0) rotate(-25deg)}50%{transform:translateY(-20px) rotate(-15deg)}}
+
+        .card{background:var(--card);border-radius:20px;border:1px solid var(--border);box-shadow:0 2px 16px rgba(74,44,61,.04);transition:transform .2s,box-shadow .2s}
+        .card:hover{box-shadow:0 6px 24px rgba(74,44,61,.07)}
+        .stat-card{border-radius:18px;padding:14px;position:relative;overflow:hidden;transition:transform .2s}.stat-card:active{transform:scale(.97)}
+        .stat-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:.8rem}
+
+        .progress-track{background:#FFE0E8;border-radius:20px;height:10px;overflow:hidden}
+        .progress-fill{height:100%;border-radius:20px;transition:width .8s cubic-bezier(.25,.8,.25,1)}
+
+        #bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:40;background:rgba(255,255,255,.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border);padding:6px 0 env(safe-area-inset-bottom,8px)}
+        .nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.62rem;font-weight:700;color:#9E7B8E;transition:color .2s,transform .2s;cursor:pointer;padding:4px 0}
+        .nav-item.active{color:#FF6B81}.nav-item.active i{transform:scale(1.15)}.nav-item i{font-size:1.2rem;transition:transform .2s}.nav-item:active{transform:scale(.9)}
+
+        .fab{position:fixed;bottom:88px;right:20px;z-index:35;width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,#FF6B81,#F48FB1);color:#fff;border:none;font-size:1.4rem;cursor:pointer;box-shadow:0 4px 20px rgba(255,107,129,.4);transition:transform .2s,box-shadow .2s;display:flex;align-items:center;justify-content:center}
+        .fab:hover{box-shadow:0 6px 28px rgba(255,107,129,.5)}.fab:active{transform:scale(.92)}
+
+        #modal-overlay{position:fixed;inset:0;z-index:50;background:rgba(74,44,61,.25);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:none;align-items:flex-end;justify-content:center}
+        #modal-overlay.show{display:flex}
+        #modal-sheet{background:#fff;border-radius:28px 28px 0 0;width:100%;max-width:500px;padding:8px 24px 32px;transform:translateY(100%);transition:transform .4s cubic-bezier(.25,.8,.25,1);max-height:85vh;overflow-y:auto}
+        #modal-overlay.show #modal-sheet{transform:translateY(0)}
+        .modal-handle{width:40px;height:4px;background:#FFC8D6;border-radius:4px;margin:8px auto 16px}
+
+        .input-field{width:100%;padding:12px 16px;border:1.5px solid var(--border);border-radius:14px;font-family:'Nunito',sans-serif;font-size:.9rem;font-weight:600;background:#FFF8FA;color:#4A2C3D;outline:none;transition:border-color .2s,box-shadow .2s}
+        .input-field:focus{border-color:#FF6B81;box-shadow:0 0 0 3px rgba(255,107,129,.12)}.input-field::placeholder{color:#9E7B8E}
+
+        .cat-pill{padding:8px 14px;border-radius:12px;font-size:.75rem;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:#fff;transition:all .2s;white-space:nowrap}.cat-pill:active{transform:scale(.95)}.cat-pill.selected{border-color:transparent;color:#fff}
+
+        #toast-container{position:fixed;top:16px;right:16px;z-index:60;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+        .toast{background:#fff;border-radius:14px;padding:14px 18px;min-width:260px;box-shadow:0 8px 32px rgba(74,44,61,.12);pointer-events:auto;display:flex;align-items:center;gap:10px;font-size:.82rem;font-weight:700;transform:translateX(120%);transition:transform .4s cubic-bezier(.25,.8,.25,1);border-left:4px solid #FF6B81}
+        .toast.show{transform:translateX(0)}.toast.warn{border-left-color:#E8B87A}.toast.error{border-left-color:#E05068}.toast.success{border-left-color:#7CB342}.toast.achievement{border-left-color:#E8B87A;background:linear-gradient(135deg,#FFFCF0,#FFF8F0)}
+
+        .sched-check{width:24px;height:24px;border-radius:8px;border:2px solid #FFC8D6;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;flex-shrink:0;font-size:.7rem;color:transparent}
+        .sched-check.checked{background:#FF6B81;border-color:#FF6B81;color:#fff}
+
+        .expense-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0}
+
+        .challenge-cell{width:100%;aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.58rem;font-weight:800;cursor:pointer;transition:all .2s;border:1.5px solid #FFE0E8;background:#fff;color:#9E7B8E}
+        .challenge-cell:active{transform:scale(.9)}.challenge-cell.completed{background:#FFC8D6;border-color:#FFC8D6;color:#E05068}
+        .challenge-cell.current{border-color:#FF6B81;color:#FF6B81;animation:cpulse 2s ease-in-out infinite}
+        .challenge-cell.locked{opacity:.35;cursor:default}
+        @keyframes cpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,107,129,.3)}50%{box-shadow:0 0 0 6px rgba(255,107,129,0)}}
+
+        .badge{width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;transition:transform .2s}
+        .badge:active{transform:scale(.92)}.badge.locked{background:#FFE0E8;color:#FFC8D6}.badge.unlocked{box-shadow:0 4px 16px rgba(0,0,0,.06)}
+
+        .tab-panel{display:none;animation:fadeUp .3s ease}.tab-panel.active{display:block}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes slideIn{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:translateX(0)}}
+        .slide-in{animation:slideIn .3s ease forwards}
+
+        .quick-btn{padding:10px 16px;border-radius:12px;font-size:.78rem;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:#fff;transition:all .2s;color:#4A2C3D}.quick-btn:active{transform:scale(.95);background:#FFF0F3}
+
+        @media(min-width:640px){#main-content{max-width:480px;margin:0 auto}#bottom-nav{max-width:480px;left:50%;transform:translateX(-50%);border-radius:20px 20px 0 0}.fab{right:calc(50% - 220px)}}
+        @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+    </style>
+</head>
+<body class="min-h-screen">
+
+<!-- Splash -->
+<div id="splash">
+    <div class="splash-straw" id="splash-straw"></div>
+    <h1 class="splash-title">Notnott</h1>
+    <p class="splash-sub">Jadwal & Keuangan Harian</p>
+</div>
+
+<!-- Background -->
+<div class="blob blob-1"></div><div class="blob blob-2"></div><div class="blob blob-3"></div>
+<div class="float-straw" id="fs1"></div><div class="float-straw" id="fs2"></div><div class="float-straw" id="fs3"></div>
+
+<!-- Toast -->
+<div id="toast-container" aria-live="polite"></div>
+
+<!-- Modal -->
+<div id="modal-overlay" role="dialog" aria-modal="true">
+    <div id="modal-sheet"><div class="modal-handle"></div><div id="modal-body"></div></div>
+</div>
+
+<!-- Main App -->
+<div id="main-content" class="relative z-10 pb-24">
+    <header class="px-5 pt-5 pb-2">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div id="header-straw" class="flex-shrink-0"></div>
+                <div>
+                    <p class="text-bark-muted text-[0.68rem] font-bold" id="header-date"></p>
+                    <h1 class="text-lg font-extrabold text-bark leading-tight" id="header-greeting"></h1>
+                </div>
+            </div>
+            <div id="streak-badge" class="flex items-center gap-1.5 bg-berry-pale px-3 py-1.5 rounded-full">
+                <i class="fa-solid fa-fire text-berry text-sm"></i>
+                <span class="text-berry text-xs font-extrabold" id="streak-count">0</span>
+            </div>
+        </div>
+    </header>
+    <section id="tab-home" class="tab-panel active px-5 mt-1"></section>
+    <section id="tab-jadwal" class="tab-panel px-5 mt-1"></section>
+    <section id="tab-pengeluaran" class="tab-panel px-5 mt-1"></section>
+    <section id="tab-tabungan" class="tab-panel px-5 mt-1"></section>
+</div>
+
+<button class="fab" id="fab-btn" aria-label="Tambah"><i class="fa-solid fa-plus"></i></button>
+
+<nav id="bottom-nav">
+    <div class="flex justify-around items-center max-w-md mx-auto">
+        <div class="nav-item active" data-tab="home" role="button" tabindex="0" aria-label="Beranda"><i class="fa-solid fa-house"></i><span>Beranda</span></div>
+        <div class="nav-item" data-tab="jadwal" role="button" tabindex="0" aria-label="Jadwal"><i class="fa-solid fa-calendar-days"></i><span>Jadwal</span></div>
+        <div class="nav-item" data-tab="pengeluaran" role="button" tabindex="0" aria-label="Pengeluaran"><i class="fa-solid fa-wallet"></i><span>Uang</span></div>
+        <div class="nav-item" data-tab="tabungan" role="button" tabindex="0" aria-label="Tabungan"><i class="fa-solid fa-piggy-bank"></i><span>Nabung</span></div>
+    </div>
+</nav>
+
+<script>
+// ===================== STRAWBERRY SVG =====================
+function strawSVG(s=1, face=false) {
+    const w=Math.round(48*s), h=Math.round(60*s);
+    const faceSVG = face ? `
+        <circle cx="18" cy="28" r="${2.2*s}" fill="#4A2C3D"/>
+        <circle cx="30" cy="28" r="${2.2*s}" fill="#4A2C3D"/>
+        <circle cx="18.8" cy="27" r="${.8*s}" fill="#fff"/>
+        <circle cx="30.8" cy="27" r="${.8*s}" fill="#fff"/>
+        <path d="M21 33 Q24 37 27 33" stroke="#4A2C3D" stroke-width="${1.5*s}" stroke-linecap="round" fill="none"/>
+        <ellipse cx="14" cy="32" rx="${3*s}" ry="${1.8*s}" fill="#FFB6C8" opacity=".5"/>
+        <ellipse cx="34" cy="32" rx="${3*s}" ry="${1.8*s}" fill="#FFB6C8" opacity=".5"/>
+    ` : '';
+    return `<svg width="${w}" height="${h}" viewBox="0 0 48 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M24 12C12 12 4 26 4 36C4 46 13 54 24 54C35 54 44 46 44 36C44 26 36 12 24 12Z" fill="#FF6B81"/>
+        <path d="M16 22C14 27 15 33 17 38" stroke="rgba(255,255,255,.25)" stroke-width="${3*s}" stroke-linecap="round" fill="none"/>
+        <ellipse cx="17" cy="24" rx="${1.8*s}" ry="${2.8*s}" fill="#FFD1DC" transform="rotate(-18 17 24)"/>
+        <ellipse cx="31" cy="24" rx="${1.8*s}" ry="${2.8*s}" fill="#FFD1DC" transform="rotate(18 31 24)"/>
+        <ellipse cx="24" cy="32" rx="${1.8*s}" ry="${2.8*s}" fill="#FFD1DC"/>
+        <ellipse cx="15" cy="38" rx="${1.8*s}" ry="${2.8*s}" fill="#FFD1DC" transform="rotate(-12 15 38)"/>
+        <ellipse cx="33" cy="38" rx="${1.8*s}" ry="${2.8*s}" fill="#FFD1DC" transform="rotate(12 33 38)"/>
+        <ellipse cx="24" cy="44" rx="${1.5*s}" ry="${2.2*s}" fill="#FFD1DC"/>
+        <path d="M24 12C19 5 10 2 6 5C10 8 17 11 24 12Z" fill="#7CB342"/>
+        <path d="M24 12C29 5 38 2 42 5C38 8 31 11 24 12Z" fill="#8BC34A"/>
+        <path d="M24 12C23 5 24 0 24 0C25 0 25 5 24 12Z" fill="#9CCC65"/>
+        ${faceSVG}
+    </svg>`;
+}
+
+// Pasang strawberry ke posisi dekoratif
+document.getElementById('splash-straw').innerHTML = strawSVG(2.2, true);
+document.getElementById('header-straw').innerHTML = strawSVG(.55, false);
+document.getElementById('fs1').innerHTML = strawSVG(.7);
+document.getElementById('fs2').innerHTML = strawSVG(.55);
+document.getElementById('fs3').innerHTML = strawSVG(.6);
+
+// ===================== KONSTANTA =====================
+const SK = 'notnott_v2';
+const today = () => new Date().toISOString().split('T')[0];
+
+const ECATS = [
+    {id:'makanan',label:'Makanan',icon:'fa-utensils',color:'#FF6B81',bg:'#FFE0E8'},
+    {id:'transport',label:'Transport',icon:'fa-motorcycle',color:'#E8B87A',bg:'#FBF0DE'},
+    {id:'belanja',label:'Belanja',icon:'fa-bag-shopping',color:'#C9A0DC',bg:'#F5ECF9'},
+    {id:'hiburan',label:'Hiburan',icon:'fa-gamepad',color:'#E8847C',bg:'#FDEEEE'},
+    {id:'tagihan',label:'Tagihan',icon:'fa-file-invoice',color:'#7BA7BC',bg:'#E4F0F5'},
+    {id:'pendidikan',label:'Pendidikan',icon:'fa-graduation-cap',color:'#7CB342',bg:'#E8F5D8'},
+    {id:'kesehatan',label:'Kesehatan',icon:'fa-heart-pulse',color:'#E05068',bg:'#FDE8E7'},
+    {id:'lainnya',label:'Lainnya',icon:'fa-ellipsis',color:'#9E7B8E',bg:'#FFE0E8'},
+];
+
+const SCATS = [
+    {id:'belajar',label:'Belajar',icon:'fa-book',color:'#7CB342',bg:'#E8F5D8'},
+    {id:'kerja',label:'Kerja',icon:'fa-briefcase',color:'#E8B87A',bg:'#FBF0DE'},
+    {id:'olahraga',label:'Olahraga',icon:'fa-dumbbell',color:'#FF6B81',bg:'#FFE0E8'},
+    {id:'sosial',label:'Sosial',icon:'fa-users',color:'#C9A0DC',bg:'#F5ECF9'},
+    {id:'selfcare',label:'Self-care',icon:'fa-spa',color:'#E8847C',bg:'#FDEEEE'},
+    {id:'lainnya',label:'Lainnya',icon:'fa-ellipsis',color:'#9E7B8E',bg:'#FFE0E8'},
+];
+
+const ACHV = [
+    {id:'first_exp',name:'First Bite',desc:'Catat pengeluaran pertama',icon:'fa-shoe-prints',bg:'#FFE0E8',color:'#FF6B81'},
+    {id:'first_sched',name:'Plan It',desc:'Buat jadwal pertama',icon:'fa-calendar-check',bg:'#E8F5D8',color:'#7CB342'},
+    {id:'plan5',name:'Super Planner',desc:'Buat 5 jadwal',icon:'fa-list-check',bg:'#E4F0F5',color:'#7BA7BC'},
+    {id:'save1',name:'Sweet Start',desc:'Mulai menabung',icon:'fa-piggy-bank',bg:'#FBF0DE',color:'#E8B87A'},
+    {id:'save100k',name:'Strawberry Jar',desc:'Tabungan Rp100.000',icon:'fa-jar',bg:'#F5ECF9',color:'#C9A0DC'},
+    {id:'save500k',name:'Berry Basket',desc:'Tabungan Rp500.000',icon:'fa-basket-shopping',bg:'#FDEEEE',color:'#E8847C'},
+    {id:'str3',name:'Hot Streak',desc:'Nabung 3 hari berturut',icon:'fa-fire',bg:'#FDE8E7',color:'#E05068'},
+    {id:'str7',name:'On Fire',desc:'Nabung 7 hari berturut',icon:'fa-fire-flame-curved',bg:'#FFE0E8',color:'#FF6B81'},
+    {id:'exp10',name:'Tracker Pro',desc:'Catat 10 pengeluaran',icon:'fa-chart-pie',bg:'#E8F5D8',color:'#7CB342'},
+    {id:'ch10',name:'Day 10',desc:'10 hari tantangan',icon:'fa-medal',bg:'#FBF0DE',color:'#E8B87A'},
+];
+
+const QUOTES = [
+    "Nabung itu kayak tanam strawberry, sabar dulu tapi manis hasilnya.",
+    "Uang yang nggak tercatat itu uang yang hilang tanpa jejak.",
+    "Budget bukan buat ngerestrict diri, tapi buat kasih kebebasan.",
+    "Small amounts add up. Trust the process.",
+    "Financial freedom dimulai dari kebiasaan kecil setiap hari.",
+    "Jangan compare financial journey kamu dengan orang lain.",
+    "Consistency > Intensity. Sedikit tapi rutin beats sekali besar.",
+    "Investasi terbaik: disiplin sama uang sendiri.",
+];
+
+// ===================== STATE =====================
+let S = {
+    schedules:[], expenses:[],
+    goal:{name:'Dana Darurat',target:2000000,current:0},
+    dailyBudget:75000, streak:0, lastSaveDate:null,
+    achievements:[], challengeDay:0, challengeDays:[],
+};
+let curTab='home', eChart=null;
+
+// ===================== UTILS =====================
+const fmt=n=>'Rp'+new Intl.NumberFormat('id-ID').format(n);
+const fmtS=n=>n>=1e6?'Rp'+(n/1e6).toFixed(1)+'jt':n>=1e3?'Rp'+(n/1e3).toFixed(0)+'rb':'Rp'+n;
+const greet=()=>{const h=new Date().getHours();return h<11?'Selamat Pagi':h<15?'Selamat Siang':h<18?'Selamat Sore':'Selamat Malam'};
+const dateLabel=()=>new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+const catInfo=(arr,id)=>arr.find(c=>c.id===id)||arr[arr.length-1];
+const tExp=()=>S.expenses.filter(e=>e.date===today());
+const tSched=()=>S.schedules.filter(s=>s.date===today()).sort((a,b)=>a.time.localeCompare(b.time));
+const chAmt=d=>(d+1)*1000;
+const gid=()=>Date.now()+Math.random();
+
+function weekExp(){
+    const r=[];
+    for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const ds=d.toISOString().split('T')[0];
+    r.push({label:d.toLocaleDateString('id-ID',{weekday:'short'}),total:S.expenses.filter(e=>e.date===ds).reduce((s,e)=>s+e.amount,0)});}
+    return r;
+}
+function catTotals(){
+    const m={};tExp().forEach(e=>{m[e.category]=(m[e.category]||0)+e.amount});
+    return Object.entries(m).map(([c,t])=>{const i=catInfo(ECATS,c);return{label:i.label,color:i.color,total:t}}).sort((a,b)=>b.total-a.total);
+}
+
+// ===================== PERSISTENSI =====================
+function load(){try{const r=localStorage.getItem(SK);if(r)S={...S,...JSON.parse(r)}}catch(e){}}
+function save(){try{localStorage.setItem(SK,JSON.stringify(S))}catch(e){}}
+
+// ===================== TOAST =====================
+function toast(msg,type='success'){
+    const c=document.getElementById('toast-container'),t=document.createElement('div');
+    t.className=`toast ${type}`;
+    const ic={success:'fa-circle-check',warn:'fa-triangle-exclamation',error:'fa-circle-xmark',achievement:'fa-trophy'};
+    const cl={success:'#7CB342',warn:'#E8B87A',error:'#E05068',achievement:'#E8B87A'};
+    t.innerHTML=`<i class="fa-solid ${ic[type]||ic.success}" style="color:${cl[type]||cl.success};font-size:1rem"></i><span>${msg}</span>`;
+    c.appendChild(t);requestAnimationFrame(()=>t.classList.add('show'));
+    setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),400)},3000);
+}
+
+// ===================== MODAL =====================
+function openModal(h){document.getElementById('modal-body').innerHTML=h;document.getElementById('modal-overlay').classList.add('show')}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('show')}
+document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
+
+// ===================== NAVIGASI =====================
+function switchTab(t){
+    curTab=t;
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    document.getElementById('tab-'+t).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.tab===t));
+    document.getElementById('fab-btn').style.display=t==='home'?'none':'flex';
+    renderTab(t);
+}
+document.querySelectorAll('.nav-item').forEach(n=>{
+    n.addEventListener('click',()=>switchTab(n.dataset.tab));
+    n.addEventListener('keydown',e=>{if(e.key==='Enter')switchTab(n.dataset.tab)});
+});
+function renderTab(t){({home:renderHome,jadwal:renderJadwal,pengeluaran:renderPengeluaran,tabungan:renderTabungan})[t]()}
+
+// FAB
+document.getElementById('fab-btn').addEventListener('click',()=>{
+    ({jadwal:openAddSched,pengeluaran:openAddExp,tabungan:openAddSave})[curTab]();
+});
+
+// ===================== HOME =====================
+function renderHome(){
+    const el=document.getElementById('tab-home');
+    const te=tExp().reduce((s,e)=>s+e.amount,0), ts=tSched(), dn=ts.filter(s=>s.done).length;
+    const bp=Math.min(100,(te/S.dailyBudget)*100), sp=S.goal.target>0?Math.min(100,(S.goal.current/S.goal.target)*100):0;
+    const q=QUOTES[Math.floor(Math.random()*QUOTES.length)];
+    const up=ts.filter(s=>!s.done).slice(0,2);
+    const bc=bp>90?'#E05068':bp>70?'#E8B87A':'#FF6B81';
+    const chTotal=S.challengeDays.reduce((s,d)=>s+chAmt(d),0);
+
+    el.innerHTML=`
+    <div class="grid grid-cols-3 gap-3 mb-4">
+        <div class="stat-card bg-berry-pale">
+            <div class="stat-icon bg-berry-light/40 text-berry-dark"><i class="fa-solid fa-check"></i></div>
+            <p class="text-[0.65rem] text-bark-muted mt-1.5 font-bold">Jadwal</p>
+            <p class="text-base font-extrabold text-berry-dark">${dn}/${ts.length}</p>
+        </div>
+        <div class="stat-card" style="background:#FDEEEE">
+            <div class="stat-icon bg-coral-light/40 text-coral"><i class="fa-solid fa-receipt"></i></div>
+            <p class="text-[0.65rem] text-bark-muted mt-1.5 font-bold">Hari Ini</p>
+            <p class="text-base font-extrabold text-coral">${fmtS(te)}</p>
+        </div>
+        <div class="stat-card bg-lav-pale">
+            <div class="stat-icon bg-lav-light/40 text-lav"><i class="fa-solid fa-piggy-bank"></i></div>
+            <p class="text-[0.65rem] text-bark-muted mt-1.5 font-bold">Tabungan</p>
+            <p class="text-base font-extrabold text-lav">${sp.toFixed(0)}%</p>
+        </div>
+    </div>
+
+    <div class="card p-4 mb-4">
+        <div class="flex justify-between items-center mb-2">
+            <span class="text-sm font-extrabold text-bark">Budget Harian</span>
+            <span class="text-xs font-bold ${bp>90?'text-red-500':'text-bark-muted'}">${fmt(te)} / ${fmt(S.dailyBudget)}</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:${bp}%;background:${bc}"></div></div>
+        ${bp>=100?'<p class="text-xs font-bold text-red-500 mt-2"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Budget hari ini terlampaui!</p>':bp>=80?'<p class="text-xs font-bold mt-2" style="color:#E8B87A"><i class="fa-solid fa-bell mr-1"></i>Hati-hati, budget hampir habis!</p>':''}
+    </div>
+
+    ${up.length?`<div class="card p-4 mb-4">
+        <div class="flex items-center gap-2 mb-3"><i class="fa-solid fa-clock text-berry text-sm"></i><span class="text-sm font-extrabold text-bark">Jadwal Berikutnya</span></div>
+        ${up.map(s=>{const c=catInfo(SCATS,s.category);return`<div class="flex items-center gap-3 mb-2 last:mb-0">
+            <span class="text-xs font-extrabold text-bark-muted w-12">${s.time}</span>
+            <div class="w-2 h-2 rounded-full flex-shrink-0" style="background:${c.color}"></div>
+            <span class="text-sm font-bold text-bark truncate">${s.text}</span>
+            <span class="ml-auto text-[0.62rem] font-bold px-2 py-0.5 rounded-md" style="background:${c.bg};color:${c.color}">${c.label}</span>
+        </div>`}).join('')}
+    </div>`:''}
+
+    <div class="card p-4 mb-4 relative overflow-hidden">
+        <div class="absolute top-2 right-2 opacity-10">${strawSVG(.8)}</div>
+        <div class="flex justify-between items-center mb-1">
+            <span class="text-sm font-extrabold text-bark">${S.goal.name}</span>
+            <span class="text-xs font-bold text-berry">${sp.toFixed(1)}%</span>
+        </div>
+        <p class="text-xs text-bark-muted font-semibold mb-3">${fmt(S.goal.current)} dari ${fmt(S.goal.target)}</p>
+        <div class="progress-track"><div class="progress-fill" style="width:${sp}%;background:linear-gradient(90deg,#FF6B81,#FFC8D6)"></div></div>
+    </div>
+
+    <div class="card p-4 mb-4">
+        <div class="flex items-center gap-2 mb-3">
+            <i class="fa-solid fa-bolt text-gold text-sm"></i>
+            <span class="text-sm font-extrabold text-bark">Tantangan 30 Hari</span>
+            <span class="ml-auto text-xs font-bold text-berry">Hari ${S.challengeDay+1}</span>
+        </div>
+        <div class="grid grid-cols-10 gap-1.5">
+            ${Array.from({length:30},(_,i)=>`<div class="challenge-cell ${S.challengeDays.includes(i)?'completed':''} ${i===S.challengeDay?'current':''} ${i>S.challengeDay?'locked':''}" data-day="${i}">${i+1}</div>`).join('')}
+        </div>
+        <p class="text-[0.62rem] text-bark-muted mt-2 font-bold">Terkumpul: ${fmt(chTotal)}</p>
+    </div>
+
+    <div class="card p-4 mb-4" style="background:linear-gradient(135deg,#FFF8FA,#FFF0F3);border-color:#FFC8D6">
+        <div class="flex items-start gap-3">
+            <div class="flex-shrink-0 mt-0.5">${strawSVG(.5,true)}</div>
+            <p class="text-sm font-bold text-bark-light leading-relaxed">${q}</p>
+        </div>
+    </div>`;
+
+    el.querySelectorAll('.challenge-cell:not(.locked):not(.completed)').forEach(c=>{
+        c.addEventListener('click',()=>{const d=+c.dataset.day;if(d===S.challengeDay)completeChDay(d)});
+    });
+}
+
+// ===================== JADWAL =====================
+function renderJadwal(){
+    const el=document.getElementById('tab-jadwal'),ts=tSched(),dn=ts.filter(s=>s.done).length;
+    el.innerHTML=`
+    <div class="flex items-center justify-between mb-4">
+        <div><h2 class="text-lg font-extrabold text-bark">Jadwal Hari Ini</h2><p class="text-xs text-bark-muted font-bold">${dn} dari ${ts.length} selesai</p></div>
+        <div class="w-10 h-10 rounded-xl bg-berry-pale flex items-center justify-center"><i class="fa-solid fa-calendar-days text-berry text-sm"></i></div>
+    </div>
+    ${ts.length===0?`<div class="text-center py-16">
+        <div class="mb-4 flex justify-center">${strawSVG(1.5,true)}</div>
+        <p class="text-sm font-extrabold text-bark">Belum ada jadwal</p><p class="text-xs text-bark-muted mt-1 font-semibold">Tap tombol + untuk mulai</p>
+    </div>`:`<div class="flex flex-col gap-2.5">${ts.map((s,i)=>{
+        const c=catInfo(SCATS,s.category),past=s.time<new Date().toTimeString().slice(0,5)&&!s.done;
+        return`<div class="card flex items-center gap-3 p-3.5 slide-in ${s.done?'opacity-50':''}" style="animation-delay:${i*.05}s">
+            <div class="sched-check ${s.done?'checked':''}" data-id="${s.id}"><i class="fa-solid fa-check"></i></div>
+            <div class="flex-shrink-0 w-12 text-center"><span class="text-sm font-extrabold ${past?'text-bark-muted':'text-bark'}">${s.time}</span></div>
+            <div class="w-1 h-8 rounded-full flex-shrink-0" style="background:${c.color}"></div>
+            <div class="flex-1 min-w-0"><p class="text-sm font-bold text-bark truncate ${s.done?'line-through':''}">${s.text}</p>
+                <span class="text-[0.62rem] font-bold px-2 py-0.5 rounded-md inline-block mt-1" style="background:${c.bg};color:${c.color}">${c.label}</span></div>
+            <button class="w-8 h-8 rounded-lg flex items-center justify-center text-bark-muted hover:text-red-400 hover:bg-red-50 transition-colors del-s" data-id="${s.id}" aria-label="Hapus"><i class="fa-solid fa-xmark text-sm"></i></button>
+        </div>`}).join('')}</div>`}`;
+
+    el.querySelectorAll('.sched-check').forEach(c=>{c.addEventListener('click',()=>{const s=S.schedules.find(x=>x.id===+c.dataset.id);if(s){s.done=!s.done;save();renderJadwal();checkAchv()}})});
+    el.querySelectorAll('.del-s').forEach(b=>{b.addEventListener('click',()=>{S.schedules=S.schedules.filter(x=>x.id!==+b.dataset.id);save();renderJadwal();toast('Jadwal dihapus','warn')})});
+}
+
+function openAddSched(){
+    openModal(`<h3 class="text-base font-extrabold text-bark mb-4">Tambah Jadwal</h3>
+        <input type="text" class="input-field mb-3" id="is-txt" placeholder="Apa yang mau dikerjakan?" maxlength="80" autofocus>
+        <input type="time" class="input-field mb-3" id="is-time" value="${new Date().toTimeString().slice(0,5)}">
+        <p class="text-xs font-bold text-bark-muted mb-2">Kategori</p>
+        <div class="flex flex-wrap gap-2 mb-5" id="is-cp">${SCATS.map(c=>`<div class="cat-pill ${c.id==='lainnya'?'selected':''}" data-cat="${c.id}" style="${c.id==='lainnya'?`background:${c.color};border-color:transparent;color:#fff`:''}">${c.label}</div>`).join('')}</div>
+        <button class="w-full py-3 rounded-2xl font-bold text-sm text-white active:scale-95 transition-transform" style="background:linear-gradient(135deg,#FF6B81,#F48FB1)" id="is-btn">Simpan Jadwal</button>`);
+    let sel='lainnya';
+    document.querySelectorAll('#is-cp .cat-pill').forEach(p=>{p.addEventListener('click',()=>{sel=p.dataset.cat;const ci=catInfo(SCATS,sel);
+        document.querySelectorAll('#is-cp .cat-pill').forEach(pp=>{const c=catInfo(SCATS,pp.dataset.cat);
+        if(pp.dataset.cat===sel){pp.classList.add('selected');pp.style.background=c.color;pp.style.borderColor='transparent';pp.style.color='#fff'}
+        else{pp.classList.remove('selected');pp.style.background='#fff';pp.style.borderColor='';pp.style.color=''}})})});
+    document.getElementById('is-btn').addEventListener('click',()=>{
+        const t=document.getElementById('is-txt').value.trim(),tm=document.getElementById('is-time').value;
+        if(!t){toast('Isi nama jadwal dulu ya','warn');return}
+        S.schedules.push({id:gid(),text:t,time:tm,category:sel,done:false,date:today()});
+        save();closeModal();renderJadwal();toast('Jadwal ditambahkan!');checkAchv();
+    });
+}
+
+// ===================== PENGELUARAN =====================
+function renderPengeluaran(){
+    const el=document.getElementById('tab-pengeluaran');
+    const te=tExp().reduce((s,e)=>s+e.amount,0),bp=Math.min(100,(te/S.dailyBudget)*100);
+    const bc=bp>90?'#E05068':bp>70?'#E8B87A':'#FF6B81';
+    el.innerHTML=`
+    <div class="flex items-center justify-between mb-4">
+        <div><h2 class="text-lg font-extrabold text-bark">Pengeluaran</h2><p class="text-xs text-bark-muted font-bold">Hari ini: ${fmt(te)}</p></div>
+        <div class="w-10 h-10 rounded-xl bg-berry-pale flex items-center justify-center"><i class="fa-solid fa-wallet text-berry text-sm"></i></div>
+    </div>
+    <div class="card p-4 mb-4">
+        <div class="flex justify-between items-center mb-2"><span class="text-sm font-extrabold text-bark">Budget Hari Ini</span><span class="text-xs font-bold ${bp>90?'text-red-500':'text-bark-muted'}">${bp.toFixed(0)}%</span></div>
+        <div class="progress-track" style="height:12px"><div class="progress-fill" style="width:${bp}%;background:${bc}"></div></div>
+        <div class="flex justify-between mt-2"><span class="text-[0.62rem] font-bold text-bark-muted">${fmt(te)} terpakai</span><span class="text-[0.62rem] font-bold text-bark-muted">${fmt(Math.max(0,S.dailyBudget-te))} sisa</span></div>
+    </div>
+    <div class="flex flex-wrap gap-2 mb-4">${[5000,10000,15000,20000,25000,50000].map(a=>`<button class="quick-btn" data-amt="${a}">${fmtS(a)}</button>`).join('')}</div>
+    <div class="card p-4 mb-4"><h3 class="text-sm font-extrabold text-bark mb-3">Kategori Hari Ini</h3>
+        ${te>0?`<div class="flex items-center gap-4"><div style="width:120px;height:120px;flex-shrink:0"><canvas id="exp-chart"></canvas></div>
+            <div class="flex-1 flex flex-col gap-1.5">${catTotals().map(c=>`<div class="flex items-center gap-2">
+                <div class="w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:${c.color}"></div>
+                <span class="text-[0.68rem] font-bold text-bark-light flex-1">${c.label}</span>
+                <span class="text-[0.68rem] font-extrabold text-bark">${fmtS(c.total)}</span></div>`).join('')}</div></div>`
+        :`<p class="text-xs text-bark-muted text-center py-6 font-semibold">Belum ada pengeluaran hari ini</p>`}
+    </div>
+    <div class="card p-4 mb-4"><h3 class="text-sm font-extrabold text-bark mb-3">7 Hari Terakhir</h3><div style="height:140px"><canvas id="wk-chart"></canvas></div></div>
+    <div class="flex items-center justify-between mb-3"><h3 class="text-sm font-extrabold text-bark">Riwayat Hari Ini</h3><span class="text-xs text-bark-muted font-bold">${tExp().length} transaksi</span></div>
+    ${tExp().length===0?`<div class="text-center py-10"><div class="mb-3 flex justify-center">${strawSVG(1.2,true)}</div>
+        <p class="text-sm font-extrabold text-bark">Belum ada pengeluaran</p><p class="text-xs text-bark-muted mt-1 font-semibold">Gunakan quick-add atau tombol +</p></div>`
+    :`<div class="flex flex-col gap-2">${tExp().slice().reverse().map((e,i)=>{const c=catInfo(ECATS,e.category);
+        return`<div class="card flex items-center gap-3 p-3 slide-in" style="animation-delay:${i*.04}s">
+            <div class="expense-icon" style="background:${c.bg};color:${c.color}"><i class="fa-solid ${c.icon}"></i></div>
+            <div class="flex-1 min-w-0"><p class="text-sm font-bold text-bark truncate">${e.text}</p><p class="text-[0.62rem] text-bark-muted font-semibold">${c.label}</p></div>
+            <span class="text-sm font-extrabold text-berry flex-shrink-0">-${fmt(e.amount)}</span>
+            <button class="w-7 h-7 rounded-lg flex items-center justify-center text-bark-muted hover:text-red-400 hover:bg-red-50 transition-colors del-e" data-id="${e.id}" aria-label="Hapus"><i class="fa-solid fa-xmark text-xs"></i></button>
+        </div>`}).join('')}</div>`}`;
+
+    el.querySelectorAll('[data-amt]').forEach(b=>{b.addEventListener('click',()=>openQExp(+b.dataset.amt))});
+    el.querySelectorAll('.del-e').forEach(b=>{b.addEventListener('click',()=>{S.expenses=S.expenses.filter(x=>x.id!==+b.dataset.id);save();renderPengeluaran();toast('Pengeluaran dihapus','warn')})});
+    if(te>0)renderExpChart();renderWkChart();
+}
+
+function renderExpChart(){
+    const ctx=document.getElementById('exp-chart');if(!ctx)return;if(eChart)eChart.destroy();
+    const d=catTotals();
+    eChart=new Chart(ctx,{type:'doughnut',data:{labels:d.map(x=>x.label),datasets:[{data:d.map(x=>x.total),backgroundColor:d.map(x=>x.color),borderWidth:0,borderRadius:4}]},
+    options:{cutout:'65%',responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},tooltip:{bodyFont:{family:'Nunito',weight:'700'},callbacks:{label:c=>' '+fmt(c.parsed)}}}}});
+}
+function renderWkChart(){
+    const ctx=document.getElementById('wk-chart');if(!ctx)return;const d=weekExp();
+    new Chart(ctx,{type:'bar',data:{labels:d.map(x=>x.label),datasets:[{data:d.map(x=>x.total),backgroundColor:d.map((_,i)=>i===6?'#FF6B81':'#FFE0E8'),borderRadius:8,borderSkipped:false,barThickness:24}]},
+    options:{responsive:true,maintainAspectRatio:false,scales:{x:{grid:{display:false},ticks:{font:{family:'Nunito',size:10,weight:'700'},color:'#9E7B8E'}},y:{display:false,beginAtZero:true}},
+    plugins:{legend:{display:false},tooltip:{bodyFont:{family:'Nunito',weight:'700'},callbacks:{label:c=>fmt(c.parsed.y)}}}}});
+}
+
+function openQExp(amt){
+    openModal(`<h3 class="text-base font-extrabold text-bark mb-1">Quick Add</h3><p class="text-2xl font-extrabold text-berry mb-4">${fmt(amt)}</p>
+        <input type="text" class="input-field mb-3" id="iq-txt" placeholder="Keterangan (opsional)" maxlength="50">
+        <p class="text-xs font-bold text-bark-muted mb-2">Kategori</p>
+        <div class="flex flex-wrap gap-2 mb-5" id="iq-cp">${ECATS.map(c=>`<div class="cat-pill ${c.id==='makanan'?'selected':''}" data-cat="${c.id}" style="${c.id==='makanan'?`background:${c.color};border-color:transparent;color:#fff`:''}">${c.label}</div>`).join('')}</div>
+        <button class="w-full py-3 rounded-2xl font-bold text-sm text-white active:scale-95 transition-transform" style="background:linear-gradient(135deg,#FF6B81,#F48FB1)" id="iq-btn">Simpan</button>`);
+    let sel='makanan';
+    document.querySelectorAll('#iq-cp .cat-pill').forEach(p=>{p.addEventListener('click',()=>{sel=p.dataset.cat;const ci=catInfo(ECATS,sel);
+        document.querySelectorAll('#iq-cp .cat-pill').forEach(pp=>{const c=catInfo(ECATS,pp.dataset.cat);
+        if(pp.dataset.cat===sel){pp.classList.add('selected');pp.style.background=c.color;pp.style.borderColor='transparent';pp.style.color='#fff'}
+        else{pp.classList.remove('selected');pp.style.background='#fff';pp.style.borderColor='';pp.style.color=''}})})});
+    document.getElementById('iq-btn').addEventListener('click',()=>{
+        const t=document.getElementById('iq-txt').value.trim()||catInfo(ECATS,sel).label;
+        S.expenses.push({id:gid(),text:t,amount:amt,category:sel,date:today()});
+        save();closeModal();renderPengeluaran();toast(`${fmt(amt)} dicatat!`);checkBudget();checkAchv();
+    });
+}
+
+function openAddExp(){
+    openModal(`<h3 class="text-base font-extrabold text-bark mb-4">Tambah Pengeluaran</h3>
+        <input type="text" class="input-field mb-3" id="ie-txt" placeholder="Keterangan" maxlength="50" autofocus>
+        <input type="number" class="input-field mb-3" id="ie-amt" placeholder="Nominal (contoh: 25000)" min="0" inputmode="numeric">
+        <p class="text-xs font-bold text-bark-muted mb-2">Kategori</p>
+        <div class="flex flex-wrap gap-2 mb-5" id="ie-cp">${ECATS.map(c=>`<div class="cat-pill ${c.id==='makanan'?'selected':''}" data-cat="${c.id}" style="${c.id==='makanan'?`background:${c.color};border-color:transparent;color:#fff`:''}">${c.label}</div>`).join('')}</div>
+        <button class="w-full py-3 rounded-2xl font-bold text-sm text-white active:scale-95 transition-transform" style="background:linear-gradient(135deg,#FF6B81,#F48FB1)" id="ie-btn">Simpan</button>`);
+    let sel='makanan';
+    document.querySelectorAll('#ie-cp .cat-pill').forEach(p=>{p.addEventListener('click',()=>{sel=p.dataset.cat;const ci=catInfo(ECATS,sel);
+        document.querySelectorAll('#ie-cp .cat-pill').forEach(pp=>{const c=catInfo(ECATS,pp.dataset.cat);
+        if(pp.dataset.cat===sel){pp.classList.add('selected');pp.style.background=c.color;pp.style.borderColor='transparent';pp.style.color='#fff'}
+        else{pp.classList.remove('selected');pp.style.background='#fff';pp.style.borderColor='';pp.style.color=''}})})});
+    document.getElementById('ie-btn').addEventListener('click',()=>{
+        const t=document.getElementById('ie-txt').value.trim(),a=parseInt(document.getElementById('ie-amt').value);
+        if(!t){toast('Isi keterangan dulu ya','warn');return}
+        if(!a||a<=0){toast('Masukkan nominal yang valid','warn');return}
+        S.expenses.push({id:gid(),text:t,amount:a,category:sel,date:today()});
+        save();closeModal();renderPengeluaran();toast(`${fmt(a)} dicatat!`);checkBudget();checkAchv();
+    });
+}
+
+function checkBudget(){
+    const te=tExp().reduce((s,e)=>s+e.amount,0);
+    if(te>=S.dailyBudget)toast('Budget harian terlampaui!','error');
+    else if(te>=S.dailyBudget*.8)toast('Budget hampir habis, hati-hati!','warn');
+}
+
+// ===================== TABUNGAN =====================
+function renderTabungan(){
+    const el=document.getElementById('tab-tabungan'),g=S.goal;
+    const pct=g.target>0?Math.min(100,(g.current/g.target)*100):0;
+    const chT=S.challengeDays.reduce((s,d)=>s+chAmt(d),0);
+
+    el.innerHTML=`
+    <div class="card p-5 mb-4 relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-36 h-36 rounded-full opacity-[.07]" style="background:#FF6B81;transform:translate(30%,-30%)"></div>
+        <div class="absolute bottom-2 right-3 opacity-10">${strawSVG(.7)}</div>
+        <div class="flex items-center gap-2 mb-1"><i class="fa-solid fa-bullseye text-berry text-sm"></i><span class="text-xs font-bold text-berry uppercase tracking-wider">Target Tabungan</span></div>
+        <h3 class="text-lg font-extrabold text-bark mb-1">${g.name}</h3>
+        <p class="text-2xl font-extrabold text-berry mb-1">${fmt(g.current)}</p>
+        <p class="text-xs text-bark-muted font-bold mb-3">dari ${fmt(g.target)}</p>
+        <div class="progress-track" style="height:14px"><div class="progress-fill" style="width:${pct}%;background:linear-gradient(90deg,#FF6B81,#FFC8D6)"></div></div>
+        <div class="flex justify-between mt-2"><span class="text-xs font-extrabold text-berry">${pct.toFixed(1)}% tercapai</span><span class="text-xs font-bold text-bark-muted">${fmt(Math.max(0,g.target-g.current))} lagi</span></div>
+    </div>
+
+    <div class="flex flex-wrap gap-2 mb-4">${[10000,25000,50000,100000].map(a=>`<button class="quick-btn text-berry" data-dep="${a}"><i class="fa-solid fa-plus text-[0.6rem] mr-1"></i>${fmtS(a)}</button>`).join('')}</div>
+
+    <div class="card p-4 mb-4">
+        <h3 class="text-sm font-extrabold text-bark mb-3"><i class="fa-solid fa-gear text-bark-muted mr-2"></i>Pengaturan</h3>
+        <div class="mb-3"><label class="text-xs font-bold text-bark-muted block mb-1">Nama Target</label><input type="text" class="input-field text-sm" id="ig-name" value="${g.name}" maxlength="40"></div>
+        <div class="mb-3"><label class="text-xs font-bold text-bark-muted block mb-1">Jumlah Target</label><input type="number" class="input-field text-sm" id="ig-target" value="${g.target}" min="0" inputmode="numeric"></div>
+        <div><label class="text-xs font-bold text-bark-muted block mb-1">Budget Harian</label><input type="number" class="input-field text-sm" id="ig-budget" value="${S.dailyBudget}" min="0" inputmode="numeric"></div>
+        <button class="w-full py-2.5 rounded-xl font-bold text-sm text-white mt-4 active:scale-95 transition-transform" style="background:#FF6B81" id="ig-btn">Simpan Pengaturan</button>
+    </div>
+
+    <div class="card p-4 mb-4">
+        <div class="flex items-center gap-2 mb-1"><i class="fa-solid fa-bolt text-gold text-sm"></i><span class="text-sm font-extrabold text-bark">Tantangan 30 Hari</span></div>
+        <p class="text-xs text-bark-muted font-bold mb-3">Nabung Rp1.000 - Rp30.000 per hari. Total: ${fmt(465000)}</p>
+        <div class="grid grid-cols-6 gap-2 mb-3">${Array.from({length:30},(_,i)=>{
+            const done=S.challengeDays.includes(i),curr=i===S.challengeDay,locked=i>S.challengeDay;
+            return`<div class="challenge-cell ${done?'completed':''} ${curr?'current':''} ${locked?'locked':''}" data-day="${i}">${i+1}</div>`}).join('')}</div>
+        <p class="text-xs font-bold text-bark-muted">Terkumpul: <span class="text-berry font-extrabold">${fmt(chT)}</span> (${S.challengeDays.length}/30 hari)</p>
+    </div>
+
+    <div class="card p-4 mb-4">
+        <h3 class="text-sm font-extrabold text-bark mb-3"><i class="fa-solid fa-trophy text-gold mr-2"></i>Pencapaian</h3>
+        <div class="grid grid-cols-5 gap-3">${ACHV.map(a=>{const u=S.achievements.includes(a.id);
+            return`<div class="flex flex-col items-center gap-1" title="${a.name}: ${a.desc}">
+                <div class="badge ${u?'unlocked':'locked'}" style="${u?`background:${a.bg};color:${a.color}`:''}"><i class="fa-solid ${a.icon}"></i></div>
+                <span class="text-[0.52rem] font-bold ${u?'text-bark':'text-bark-muted'} text-center leading-tight">${a.name}</span></div>`}).join('')}</div>
+    </div>
+
+    <div class="card p-4 mb-4" style="background:linear-gradient(135deg,#FFF8FA,#FFF0F3);border-color:#FFC8D6">
+        <h3 class="text-sm font-extrabold text-bark mb-2"><i class="fa-solid fa-lightbulb text-gold mr-2"></i>Tips Hemat Gen Z</h3>
+        <ul class="text-xs text-bark-light font-bold space-y-1.5 leading-relaxed">
+            <li><span class="text-berry mr-1">1.</span>Metode 50/30/20: kebutuhan, keinginan, tabungan</li>
+            <li><span class="text-berry mr-1">2.</span>Review pengeluaran tiap malam sebelum tidur</li>
+            <li><span class="text-berry mr-1">3.</span>Masak sendiri bisa hemat 40% budget makan</li>
+            <li><span class="text-berry mr-1">4.</span>Tidak perlu FOMO, banyak yang gratis dan seru</li>
+            <li><span class="text-berry mr-1">5.</span>Set pengingat bayar tagihan sebelum jatuh tempo</li>
+            <li><span class="text-berry mr-1">6.</span>Bring your own tumbler, hemat dan eco-friendly</li>
+        </ul>
+    </div>`;
+
+    el.querySelectorAll('[data-dep]').forEach(b=>{b.addEventListener('click',()=>deposit(+b.dataset.dep))});
+    el.querySelectorAll('.challenge-cell:not(.locked):not(.completed)').forEach(c=>{
+        c.addEventListener('click',()=>{const d=+c.dataset.day;if(d===S.challengeDay)completeChDay(d)})});
+    document.getElementById('ig-btn').addEventListener('click',()=>{
+        const n=document.getElementById('ig-name').value.trim(),t=parseInt(document.getElementById('ig-target').value),b=parseInt(document.getElementById('ig-budget').value);
+        if(!n){toast('Nama target tidak boleh kosong','warn');return}
+        if(!t||t<=0){toast('Jumlah target tidak valid','warn');return}
+        if(!b||b<=0){toast('Budget harian tidak valid','warn');return}
+        S.goal.name=n;S.goal.target=t;S.dailyBudget=b;save();renderTabungan();toast('Pengaturan disimpan!');
+    });
+}
+
+function deposit(a){S.goal.current+=a;updateStreak();save();renderTabungan();toast(`+${fmt(a)} ditabung!`);checkAchv()}
+
+function openAddSave(){
+    openModal(`<h3 class="text-base font-extrabold text-bark mb-4">Tambah Tabungan</h3>
+        <input type="number" class="input-field mb-4" id="isv-amt" placeholder="Nominal (contoh: 50000)" min="0" inputmode="numeric" autofocus>
+        <button class="w-full py-3 rounded-2xl font-bold text-sm text-white active:scale-95 transition-transform" style="background:linear-gradient(135deg,#FF6B81,#F48FB1)" id="isv-btn">Nabung Sekarang</button>`);
+    document.getElementById('isv-btn').addEventListener('click',()=>{
+        const a=parseInt(document.getElementById('isv-amt').value);
+        if(!a||a<=0){toast('Masukkan nominal yang valid','warn');return}
+        deposit(a);closeModal();
+    });
+}
+
+function completeChDay(d){
+    if(S.challengeDays.includes(d))return;
+    S.challengeDays.push(d);const a=chAmt(d);S.goal.current+=a;S.challengeDay=d+1;updateStreak();save();
+    toast(`Hari ${d+1} selesai! +${fmt(a)}`,'success');renderTabungan();if(curTab==='home')renderHome();checkAchv();
+}
+
+function updateStreak(){
+    const td=today();if(S.lastSaveDate===td)return;
+    const y=new Date();y.setDate(y.getDate()-1);const yd=y.toISOString().split('T')[0];
+    S.streak=S.lastSaveDate===yd?S.streak+1:1;S.lastSaveDate=td;
+    document.getElementById('streak-count').textContent=S.streak;
+}
+
+// ===================== ACHIEVEMENTS =====================
+function checkAchv(){
+    const ck={first_exp:()=>S.expenses.length>=1,first_sched:()=>S.schedules.length>=1,plan5:()=>S.schedules.length>=5,
+        save1:()=>S.goal.current>0,save100k:()=>S.goal.current>=100000,save500k:()=>S.goal.current>=500000,
+        str3:()=>S.streak>=3,str7:()=>S.streak>=7,exp10:()=>S.expenses.length>=10,ch10:()=>S.challengeDays.length>=10};
+    for(const[id,fn]of Object.entries(ck)){
+        if(!S.achievements.includes(id)&&fn()){S.achievements.push(id);const a=ACHV.find(x=>x.id===id);
+        if(a)toast(`Pencapaian: ${a.name}!`,'achievement')}
+    }save();
+}
+
+// ===================== PENGINGAT =====================
+function checkReminder(){
+    const ct=new Date().toTimeString().slice(0,5);
+    tSched().filter(s=>!s.done&&s.time===ct).forEach(s=>toast(`Pengingat: ${s.text} (${s.time})`,'warn'));
+}
+
+// ===================== HEADER =====================
+function updateHeader(){
+    document.getElementById('header-greeting').textContent=greet();
+    document.getElementById('header-date').textContent=dateLabel();
+    document.getElementById('streak-count').textContent=S.streak;
+}
+
+// ===================== INIT =====================
+function init(){
+    load();updateHeader();
+    setTimeout(()=>{document.getElementById('splash').classList.add('hide');setTimeout(()=>document.getElementById('splash').remove(),600)},1500);
+    document.getElementById('fab-btn').style.display='none';
+    renderHome();
+    setInterval(checkReminder,30000);checkReminder();
+    setTimeout(checkAchv,2000);
+}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
