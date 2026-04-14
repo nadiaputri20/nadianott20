@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Notnott — Jadwal & Keuangan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    cream: { DEFAULT: '#FAF6F1', dark: '#F0E8DD' },
+                    sage: { DEFAULT: '#6D9B7A', light: '#B8D4BF', pale: '#E2F0E5', dark: '#4A7A57' },
+                    coral: { DEFAULT: '#E07B5F', light: '#F4C4B8', pale: '#FDEEE9' },
+                    gold: { DEFAULT: '#D4A56A', light: '#E8C896', pale: '#FBF0DE' },
+                    bark: { DEFAULT: '#3A2E25', light: '#6B5D52', muted: '#B5A89A' },
+                    rose: { DEFAULT: '#C97B8B', light: '#E8B5C0', pale: '#FCE4EA' },
+                    sky: { DEFAULT: '#7BA7BC', light: '#B5D1DE', pale: '#E4F0F5' },
+                    plum: { DEFAULT: '#9B86AE', light: '#C4B5D1', pale: '#EDE6F3' },
+                },
+                fontFamily: { sans: ['Quicksand', 'sans-serif'] },
+            }
+        }
+    }
+    </script>
+    <style>
+        :root {
+            --bg: #FAF6F1;
+            --card: #FFFFFF;
+            --border: #EDE5DA;
+            --accent: #E07B5F;
+            --primary: #6D9B7A;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Quicksand', sans-serif; background: var(--bg); color: #3A2E25; overflow-x: hidden; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #D4C8B8; border-radius: 4px; }
+
+        /* Splash */
+        #splash {
+            position: fixed; inset: 0; z-index: 100; background: linear-gradient(135deg, #6D9B7A 0%, #E07B5F 50%, #D4A56A 100%);
+            display: flex; align-items: center; justify-content: center; flex-direction: column;
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        #splash.hide { opacity: 0; transform: scale(1.1); pointer-events: none; }
+        #splash h1 { font-size: 3rem; font-weight: 700; color: #fff; letter-spacing: -1px; animation: splashPulse 1s ease-in-out infinite alternate; }
+        #splash p { color: rgba(255,255,255,0.8); font-size: 0.9rem; margin-top: 8px; font-weight: 500; }
+        @keyframes splashPulse { from { transform: scale(1); } to { transform: scale(1.05); } }
+
+        /* Background blobs */
+        .blob {
+            position: fixed; border-radius: 50%; pointer-events: none; z-index: 0;
+            filter: blur(90px); opacity: 0.25;
+        }
+        .blob-1 { width: 300px; height: 300px; background: #B8D4BF; top: -80px; right: -60px; animation: blobFloat1 18s ease-in-out infinite; }
+        .blob-2 { width: 250px; height: 250px; background: #F4C4B8; bottom: 100px; left: -80px; animation: blobFloat2 22s ease-in-out infinite; }
+        .blob-3 { width: 200px; height: 200px; background: #E8C896; top: 50%; right: -40px; animation: blobFloat3 15s ease-in-out infinite; }
+        @keyframes blobFloat1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-40px,60px)} }
+        @keyframes blobFloat2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(50px,-40px)} }
+        @keyframes blobFloat3 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-30px,-50px)} }
+
+        /* Cards */
+        .card {
+            background: var(--card); border-radius: 20px; border: 1px solid var(--border);
+            box-shadow: 0 2px 12px rgba(58,46,37,0.04);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card:hover { box-shadow: 0 4px 20px rgba(58,46,37,0.08); }
+
+        /* Stat cards */
+        .stat-card {
+            border-radius: 18px; padding: 16px; position: relative; overflow: hidden;
+            transition: transform 0.2s ease;
+        }
+        .stat-card:active { transform: scale(0.97); }
+        .stat-card .stat-icon {
+            width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem;
+        }
+
+        /* Progress bar */
+        .progress-track { background: #F0E8DD; border-radius: 20px; height: 10px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 20px; transition: width 0.8s cubic-bezier(0.25,0.8,0.25,1); }
+
+        /* Bottom nav */
+        #bottom-nav {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+            background: rgba(255,255,255,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border); padding: 6px 0 env(safe-area-inset-bottom, 8px);
+        }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
+            font-size: 0.65rem; font-weight: 600; color: #B5A89A;
+            transition: color 0.2s ease, transform 0.2s ease; cursor: pointer; padding: 4px 0;
+        }
+        .nav-item.active { color: #E07B5F; }
+        .nav-item.active i { transform: scale(1.15); }
+        .nav-item i { font-size: 1.2rem; transition: transform 0.2s ease; }
+        .nav-item:active { transform: scale(0.9); }
+
+        /* FAB */
+        .fab {
+            position: fixed; bottom: 88px; right: 20px; z-index: 35;
+            width: 56px; height: 56px; border-radius: 18px;
+            background: linear-gradient(135deg, #E07B5F, #D4A56A);
+            color: #fff; border: none; font-size: 1.4rem; cursor: pointer;
+            box-shadow: 0 4px 20px rgba(224,123,95,0.4);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .fab:hover { box-shadow: 0 6px 28px rgba(224,123,95,0.5); }
+        .fab:active { transform: scale(0.92); }
+
+        /* Modal */
+        #modal-overlay {
+            position: fixed; inset: 0; z-index: 50; background: rgba(58,46,37,0.3);
+            backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+            display: none; align-items: flex-end; justify-content: center;
+        }
+        #modal-overlay.show { display: flex; }
+        #modal-sheet {
+            background: #fff; border-radius: 28px 28px 0 0; width: 100%; max-width: 500px;
+            padding: 8px 24px 32px; transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.25,0.8,0.25,1);
+            max-height: 85vh; overflow-y: auto;
+        }
+        #modal-overlay.show #modal-sheet { transform: translateY(0); }
+        .modal-handle { width: 40px; height: 4px; background: #E0D6CA; border-radius: 4px; margin: 8px auto 16px; }
+
+        /* Inputs */
+        .input-field {
+            width: 100%; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: 14px;
+            font-family: 'Quicksand', sans-serif; font-size: 0.9rem; font-weight: 500;
+            background: #FAF6F1; color: #3A2E25; outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .input-field:focus { border-color: #E07B5F; box-shadow: 0 0 0 3px rgba(224,123,95,0.12); }
+        .input-field::placeholder { color: #B5A89A; }
+
+        /* Category pills */
+        .cat-pill {
+            padding: 8px 14px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;
+            cursor: pointer; border: 1.5px solid var(--border); background: #fff;
+            transition: all 0.2s ease; white-space: nowrap;
+        }
+        .cat-pill:active { transform: scale(0.95); }
+        .cat-pill.selected { border-color: transparent; color: #fff; }
+
+        /* Toast */
+        #toast-container { position: fixed; top: 16px; right: 16px; z-index: 60; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+        .toast {
+            background: #fff; border-radius: 14px; padding: 14px 18px; min-width: 260px;
+            box-shadow: 0 8px 32px rgba(58,46,37,0.12); pointer-events: auto;
+            display: flex; align-items: center; gap: 10px; font-size: 0.82rem; font-weight: 600;
+            transform: translateX(120%); transition: transform 0.4s cubic-bezier(0.25,0.8,0.25,1);
+            border-left: 4px solid #6D9B7A;
+        }
+        .toast.show { transform: translateX(0); }
+        .toast.warn { border-left-color: #D4A56A; }
+        .toast.error { border-left-color: #D4605A; }
+        .toast.success { border-left-color: #6D9B7A; }
+        .toast.achievement { border-left-color: #D4A56A; background: linear-gradient(135deg, #FFFCF0, #FFF8E8); }
+
+        /* Schedule item */
+        .schedule-item {
+            display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+            border-radius: 16px; background: #fff; border: 1px solid var(--border);
+            transition: all 0.3s ease; position: relative; overflow: hidden;
+        }
+        .schedule-item.done { opacity: 0.5; }
+        .schedule-item.done .sched-text { text-decoration: line-through; }
+        .sched-check {
+            width: 24px; height: 24px; border-radius: 8px; border: 2px solid #D4C8B8;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            transition: all 0.2s ease; flex-shrink: 0; font-size: 0.7rem; color: transparent;
+        }
+        .sched-check.checked { background: #6D9B7A; border-color: #6D9B7A; color: #fff; }
+
+        /* Expense item */
+        .expense-item {
+            display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+            border-radius: 14px; background: #fff; border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+        .expense-icon {
+            width: 40px; height: 40px; border-radius: 12px; display: flex;
+            align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0;
+        }
+
+        /* Challenge grid */
+        .challenge-cell {
+            width: 100%; aspect-ratio: 1; border-radius: 8px; display: flex;
+            align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 700;
+            cursor: pointer; transition: all 0.2s ease; border: 1.5px solid #EDE5DA;
+            background: #fff; color: #B5A89A;
+        }
+        .challenge-cell:active { transform: scale(0.9); }
+        .challenge-cell.completed { background: #B8D4BF; border-color: #B8D4BF; color: #4A7A57; }
+        .challenge-cell.current { border-color: #E07B5F; color: #E07B5F; animation: cellPulse 2s ease-in-out infinite; }
+        .challenge-cell.locked { opacity: 0.4; cursor: default; }
+        @keyframes cellPulse { 0%,100%{box-shadow:0 0 0 0 rgba(224,123,95,0.3)} 50%{box-shadow:0 0 0 6px rgba(224,123,95,0)} }
+
+        /* Achievement badge */
+        .badge {
+            width: 60px; height: 60px; border-radius: 16px; display: flex;
+            align-items: center; justify-content: center; font-size: 1.2rem;
+            transition: transform 0.2s ease; position: relative;
+        }
+        .badge:active { transform: scale(0.92); }
+        .badge.locked { background: #F0E8DD; color: #D4C8B8; }
+        .badge.unlocked { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+
+        /* Tab panels */
+        .tab-panel { display: none; animation: fadeIn 0.3s ease; }
+        .tab-panel.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Slide in for list items */
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: translateX(0); } }
+        .slide-in { animation: slideIn 0.35s ease forwards; }
+
+        /* Quick add buttons */
+        .quick-btn {
+            padding: 10px 16px; border-radius: 12px; font-size: 0.78rem; font-weight: 700;
+            cursor: pointer; border: 1.5px solid var(--border); background: #fff;
+            transition: all 0.2s ease; color: #3A2E25;
+        }
+        .quick-btn:active { transform: scale(0.95); background: #FAF6F1; }
+
+        /* Responsive */
+        @media (min-width: 640px) {
+            #main-content { max-width: 480px; margin: 0 auto; }
+            #bottom-nav { max-width: 480px; left: 50%; transform: translateX(-50%); border-radius: 20px 20px 0 0; }
+            .fab { right: calc(50% - 220px); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Splash -->
+    <div id="splash">
+        <h1>Notnott</h1>
+        <p>Jadwal & Keuangan Harian</p>
+    </div>
+
+    <!-- Background -->
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
+    <!-- Toast -->
+    <div id="toast-container" aria-live="polite"></div>
+
+    <!-- Modal -->
+    <div id="modal-overlay" role="dialog" aria-modal="true">
+        <div id="modal-sheet">
+            <div class="modal-handle"></div>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="main-content" class="relative z-10 pb-24">
+        <header class="px-5 pt-5 pb-2">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-bark-muted text-xs font-semibold" id="header-date"></p>
+                    <h1 class="text-xl font-bold text-bark mt-0.5" id="header-greeting"></h1>
+                </div>
+                <div id="streak-badge" class="flex items-center gap-1.5 bg-coral-pale px-3 py-1.5 rounded-full cursor-default">
+                    <i class="fa-solid fa-fire text-coral text-sm"></i>
+                    <span class="text-coral text-xs font-bold" id="streak-count">0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- HOME -->
+        <section id="tab-home" class="tab-panel active px-5 mt-2"></section>
+
+        <!-- JADWAL -->
+        <section id="tab-jadwal" class="tab-panel px-5 mt-2"></section>
+
+        <!-- PENGELUARAN -->
+        <section id="tab-pengeluaran" class="tab-panel px-5 mt-2"></section>
+
+        <!-- TABUNGAN -->
+        <section id="tab-tabungan" class="tab-panel px-5 mt-2"></section>
+    </div>
+
+    <!-- FAB -->
+    <button class="fab" id="fab-btn" aria-label="Tambah">
+        <i class="fa-solid fa-plus"></i>
+    </button>
+
+    <!-- Bottom Nav -->
+    <nav id="bottom-nav">
+        <div class="flex justify-around items-center max-w-md mx-auto">
+            <div class="nav-item active" data-tab="home" role="button" tabindex="0" aria-label="Beranda">
+                <i class="fa-solid fa-house"></i><span>Beranda</span>
+            </div>
+            <div class="nav-item" data-tab="jadwal" role="button" tabindex="0" aria-label="Jadwal">
+                <i class="fa-solid fa-calendar-days"></i><span>Jadwal</span>
+            </div>
+            <div class="nav-item" data-tab="pengeluaran" role="button" tabindex="0" aria-label="Pengeluaran">
+                <i class="fa-solid fa-wallet"></i><span>Uang</span>
+            </div>
+            <div class="nav-item" data-tab="tabungan" role="button" tabindex="0" aria-label="Tabungan">
+                <i class="fa-solid fa-piggy-bank"></i><span>Nabung</span>
+            </div>
+        </div>
+    </nav>
+
+<script>
+// ===================== KONSTANTA =====================
+const STORAGE_KEY = 'notnott_data';
+const today = () => new Date().toISOString().split('T')[0];
+
+const EXPENSE_CATS = [
+    { id: 'makanan', label: 'Makanan', icon: 'fa-utensils', color: '#E07B5F', bg: '#FDEEE9' },
+    { id: 'transport', label: 'Transport', icon: 'fa-motorcycle', color: '#D4A56A', bg: '#FBF0DE' },
+    { id: 'belanja', label: 'Belanja', icon: 'fa-bag-shopping', color: '#C97B8B', bg: '#FCE4EA' },
+    { id: 'hiburan', label: 'Hiburan', icon: 'fa-gamepad', color: '#9B86AE', bg: '#EDE6F3' },
+    { id: 'tagihan', label: 'Tagihan', icon: 'fa-file-invoice', color: '#7BA7BC', bg: '#E4F0F5' },
+    { id: 'pendidikan', label: 'Pendidikan', icon: 'fa-graduation-cap', color: '#6D9B7A', bg: '#E2F0E5' },
+    { id: 'kesehatan', label: 'Kesehatan', icon: 'fa-heart-pulse', color: '#D4605A', bg: '#FDE8E7' },
+    { id: 'lainnya', label: 'Lainnya', icon: 'fa-ellipsis', color: '#B5A89A', bg: '#F0E8DD' },
+];
+
+const SCHED_CATS = [
+    { id: 'belajar', label: 'Belajar', icon: 'fa-book', color: '#6D9B7A', bg: '#E2F0E5' },
+    { id: 'kerja', label: 'Kerja', icon: 'fa-briefcase', color: '#D4A56A', bg: '#FBF0DE' },
+    { id: 'olahraga', label: 'Olahraga', icon: 'fa-dumbbell', color: '#E07B5F', bg: '#FDEEE9' },
+    { id: 'sosial', label: 'Sosial', icon: 'fa-users', color: '#C97B8B', bg: '#FCE4EA' },
+    { id: 'selfcare', label: 'Self-care', icon: 'fa-spa', color: '#9B86AE', bg: '#EDE6F3' },
+    { id: 'lainnya', label: 'Lainnya', icon: 'fa-ellipsis', color: '#B5A89A', bg: '#F0E8DD' },
+];
+
+const ACHIEVEMENTS = [
+    { id: 'first_expense', name: 'Langkah Pertama', desc: 'Catat pengeluaran pertama', icon: 'fa-shoe-prints', bg: '#FDEEE9', color: '#E07B5F' },
+    { id: 'first_sched', name: 'Rencana Matang', desc: 'Buat jadwal pertama', icon: 'fa-calendar-check', bg: '#E2F0E5', color: '#6D9B7A' },
+    { id: 'planner5', name: 'Super Planner', desc: 'Buat 5 jadwal', icon: 'fa-list-check', bg: '#E4F0F5', color: '#7BA7BC' },
+    { id: 'save_first', name: 'Nabung Pertama', desc: 'Mulai menabung', icon: 'fa-piggy-bank', bg: '#FBF0DE', color: '#D4A56A' },
+    { id: 'save_100k', name: 'Rp100 Ribu!', desc: 'Tabungan capai Rp100.000', icon: 'fa-trophy', bg: '#FCE4EA', color: '#C97B8B' },
+    { id: 'save_500k', name: 'Setengah Juta', desc: 'Tabungan capai Rp500.000', icon: 'fa-star', bg: '#EDE6F3', color: '#9B86AE' },
+    { id: 'streak3', name: '3 Hari Berturut', desc: 'Nabung 3 hari berturut', icon: 'fa-fire', bg: '#FDE8E7', color: '#D4605A' },
+    { id: 'streak7', name: 'Semangat 7 Hari', desc: 'Nabung 7 hari berturut', icon: 'fa-fire-flame-curved', bg: '#FDEEE9', color: '#E07B5F' },
+    { id: 'expense10', name: 'Tracker Pro', desc: 'Catat 10 pengeluaran', icon: 'fa-chart-pie', bg: '#E2F0E5', color: '#6D9B7A' },
+    { id: 'challenge10', name: 'Challenge Day 10', desc: '10 hari tantangan nabung', icon: 'fa-medal', bg: '#FBF0DE', color: '#D4A56A' },
+];
+
+const QUOTES = [
+    "Uang yang tersimpan adalah masa depan yang terjamin.",
+    "Kecil-kecil jadi bukit, sedikit-sedikit jadi tabungan.",
+    "Disiplin hari ini, bahagia besok.",
+    "Jangan menabung sisa, belanjakan sisa setelah menabung.",
+    "Investasi terbaik adalah menginvestasikan diri sendiri.",
+    "Finansial sehat, mental pun tenang.",
+    "Target yang jelas membuat langkah lebih pasti.",
+    "Mulai dari sekarang, bukan nanti.",
+];
+
+// ===================== STATE =====================
+let state = {
+    schedules: [],
+    expenses: [],
+    savingsGoal: { name: 'Dana Darurat', target: 2000000, current: 0 },
+    dailyBudget: 75000,
+    streak: 0,
+    lastSaveDate: null,
+    achievements: [],
+    challengeDay: 0,
+    completedChallengeDays: [],
+};
+
+let currentTab = 'home';
+let expenseChart = null;
+let reminderInterval = null;
+
+// ===================== UTILITAS =====================
+function fmt(n) { return 'Rp' + new Intl.NumberFormat('id-ID').format(n); }
+function fmtShort(n) {
+    if (n >= 1000000) return 'Rp' + (n/1000000).toFixed(1) + 'jt';
+    if (n >= 1000) return 'Rp' + (n/1000).toFixed(0) + 'rb';
+    return 'Rp' + n;
+}
+function getGreeting() {
+    const h = new Date().getHours();
+    if (h < 11) return 'Selamat Pagi';
+    if (h < 15) return 'Selamat Siang';
+    if (h < 18) return 'Selamat Sore';
+    return 'Selamat Malam';
+}
+function getTodayLabel() {
+    return new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+function getCatInfo(cats, id) { return cats.find(c => c.id === id) || cats[cats.length - 1]; }
+function todayExpenses() { return state.expenses.filter(e => e.date === today()); }
+function todaySchedules() { return state.schedules.filter(s => s.date === today()).sort((a,b) => a.time.localeCompare(b.time)); }
+function getWeekExpenses() {
+    const result = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const ds = d.toISOString().split('T')[0];
+        const dayLabel = d.toLocaleDateString('id-ID', { weekday: 'short' });
+        const total = state.expenses.filter(e => e.date === ds).reduce((s, e) => s + e.amount, 0);
+        result.push({ label: dayLabel, total });
+    }
+    return result;
+}
+function challengeAmount(day) { return (day + 1) * 1000; }
+function genId() { return Date.now() + Math.random(); }
+
+// ===================== PERSISTENSI =====================
+function loadState() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+            const saved = JSON.parse(raw);
+            state = { ...state, ...saved };
+        }
+    } catch(e) { console.warn('Gagal memuat data:', e); }
+}
+function saveState() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) { console.warn('Gagal menyimpan:', e); }
+}
+
+// ===================== TOAST =====================
+function showToast(msg, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    const icons = { success: 'fa-circle-check', warn: 'fa-triangle-exclamation', error: 'fa-circle-xmark', achievement: 'fa-trophy' };
+    const colors = { success: '#6D9B7A', warn: '#D4A56A', error: '#D4605A', achievement: '#D4A56A' };
+    t.innerHTML = `<i class="fa-solid ${icons[type] || icons.success}" style="color:${colors[type]||colors.success};font-size:1rem"></i><span>${msg}</span>`;
+    container.appendChild(t);
+    requestAnimationFrame(() => t.classList.add('show'));
+    setTimeout(() => {
+        t.classList.remove('show');
+        setTimeout(() => t.remove(), 400);
+    }, 3000);
+}
+
+// ===================== MODAL =====================
+function openModal(html) {
+    const overlay = document.getElementById('modal-overlay');
+    document.getElementById('modal-body').innerHTML = html;
+    overlay.classList.add('show');
+}
+function closeModal() {
+    const overlay = document.getElementById('modal-overlay');
+    overlay.classList.remove('show');
+}
+document.getElementById('modal-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+
+// ===================== NAVIGASI =====================
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => {
+        n.classList.toggle('active', n.dataset.tab === tab);
+    });
+    const fab = document.getElementById('fab-btn');
+    fab.style.display = (tab === 'home') ? 'none' : 'flex';
+    renderTab(tab);
+}
+document.querySelectorAll('.nav-item').forEach(n => {
+    n.addEventListener('click', () => switchTab(n.dataset.tab));
+    n.addEventListener('keydown', e => { if (e.key === 'Enter') switchTab(n.dataset.tab); });
+});
+
+function renderTab(tab) {
+    switch(tab) {
+        case 'home': renderHome(); break;
+        case 'jadwal': renderJadwal(); break;
+        case 'pengeluaran': renderPengeluaran(); break;
+        case 'tabungan': renderTabungan(); break;
+    }
+}
+
+// ===================== FAB =====================
+document.getElementById('fab-btn').addEventListener('click', () => {
+    switch(currentTab) {
+        case 'jadwal': openAddSchedule(); break;
+        case 'pengeluaran': openAddExpense(); break;
+        case 'tabungan': openAddSavings(); break;
+    }
+});
+
+// ===================== HOME =====================
+function renderHome() {
+    const el = document.getElementById('tab-home');
+    const tExp = todayExpenses().reduce((s,e) => s + e.amount, 0);
+    const tSched = todaySchedules();
+    const doneSched = tSched.filter(s => s.done).length;
+    const budgetPct = Math.min(100, (tExp / state.dailyBudget) * 100);
+    const savePct = state.savingsGoal.target > 0 ? Math.min(100, (state.savingsGoal.current / state.savingsGoal.target) * 100) : 0;
+    const quote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+    const upcoming = tSched.filter(s => !s.done).slice(0, 2);
+    const budgetColor = budgetPct > 90 ? '#D4605A' : budgetPct > 70 ? '#D4A56A' : '#6D9B7A';
+
+    el.innerHTML = `
+        <!-- Stat Cards -->
+        <div class="grid grid-cols-3 gap-3 mb-4">
+            <div class="stat-card bg-sage-pale">
+                <div class="stat-icon bg-sage-light/50 text-sage-dark"><i class="fa-solid fa-check"></i></div>
+                <p class="text-xs text-bark-muted mt-2 font-semibold">Jadwal</p>
+                <p class="text-lg font-bold text-sage-dark">${doneSched}/${tSched.length}</p>
+            </div>
+            <div class="stat-card bg-coral-pale">
+                <div class="stat-icon bg-coral-light/50 text-coral"><i class="fa-solid fa-receipt"></i></div>
+                <p class="text-xs text-bark-muted mt-2 font-semibold">Hari Ini</p>
+                <p class="text-lg font-bold text-coral">${fmtShort(tExp)}</p>
+            </div>
+            <div class="stat-card bg-gold-pale">
+                <div class="stat-icon bg-gold-light/50 text-gold"><i class="fa-solid fa-piggy-bank"></i></div>
+                <p class="text-xs text-bark-muted mt-2 font-semibold">Tabungan</p>
+                <p class="text-lg font-bold text-gold">${savePct.toFixed(0)}%</p>
+            </div>
+        </div>
+
+        <!-- Budget -->
+        <div class="card p-4 mb-4">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-sm font-bold text-bark">Budget Harian</span>
+                <span class="text-xs font-semibold ${budgetPct > 90 ? 'text-red-500' : 'text-bark-muted'}">${fmt(tExp)} / ${fmt(state.dailyBudget)}</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" style="width:${budgetPct}%;background:${budgetColor}"></div>
+            </div>
+            ${budgetPct >= 100 ? '<p class="text-xs font-bold text-red-500 mt-2"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Budget hari ini sudah terlampaui!</p>' :
+              budgetPct >= 80 ? '<p class="text-xs font-bold text-gold mt-2"><i class="fa-solid fa-bell mr-1"></i>Budget hampir habis, hati-hati!</p>' : ''}
+        </div>
+
+        ${upcoming.length > 0 ? `
+        <!-- Jadwal Berikutnya -->
+        <div class="card p-4 mb-4">
+            <div class="flex items-center gap-2 mb-3">
+                <i class="fa-solid fa-clock text-sage text-sm"></i>
+                <span class="text-sm font-bold text-bark">Jadwal Berikutnya</span>
+            </div>
+            ${upcoming.map(s => {
+                const cat = getCatInfo(SCHED_CATS, s.category);
+                return `<div class="flex items-center gap-3 mb-2 last:mb-0">
+                    <span class="text-xs font-bold text-bark-muted w-12">${s.time}</span>
+                    <div class="w-2 h-2 rounded-full flex-shrink-0" style="background:${cat.color}"></div>
+                    <span class="text-sm font-semibold text-bark truncate">${s.text}</span>
+                    <span class="ml-auto text-[0.65rem] font-bold px-2 py-0.5 rounded-md" style="background:${cat.bg};color:${cat.color}">${cat.label}</span>
+                </div>`;
+            }).join('')}
+        </div>` : ''}
+
+        <!-- Tabungan Progress -->
+        <div class="card p-4 mb-4">
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-sm font-bold text-bark">${state.savingsGoal.name}</span>
+                <span class="text-xs font-bold text-sage">${savePct.toFixed(1)}%</span>
+            </div>
+            <p class="text-xs text-bark-muted mb-3">${fmt(state.savingsGoal.current)} dari ${fmt(state.savingsGoal.target)}</p>
+            <div class="progress-track">
+                <div class="progress-fill" style="width:${savePct}%;background:linear-gradient(90deg,#6D9B7A,#B8D4BF)"></div>
+            </div>
+        </div>
+
+        <!-- Tantangan Mini -->
+        <div class="card p-4 mb-4">
+            <div class="flex items-center gap-2 mb-3">
+                <i class="fa-solid fa-bolt text-gold text-sm"></i>
+                <span class="text-sm font-bold text-bark">Tantangan 30 Hari</span>
+                <span class="ml-auto text-xs font-bold text-coral">Hari ${state.challengeDay + 1}</span>
+            </div>
+            <div class="grid grid-cols-10 gap-1.5">
+                ${Array.from({length:30}, (_,i) => {
+                    const done = state.completedChallengeDays.includes(i);
+                    const curr = i === state.challengeDay;
+                    const locked = i > state.challengeDay;
+                    return `<div class="challenge-cell ${done?'completed':''} ${curr?'current':''} ${locked?'locked':''}" data-day="${i}">${i+1}</div>`;
+                }).join('')}
+            </div>
+            <p class="text-[0.65rem] text-bark-muted mt-2 font-semibold">Total: ${fmt(state.completedChallengeDays.reduce((s,d) => s + challengeAmount(d), 0))}</p>
+        </div>
+
+        <!-- Quote -->
+        <div class="card p-4 mb-4 bg-gradient-to-br from-cream to-cream-dark border-0">
+            <i class="fa-solid fa-quote-left text-coral-light text-lg mb-2"></i>
+            <p class="text-sm font-semibold text-bark-light leading-relaxed">${quote}</p>
+        </div>
+    `;
+
+    // Challenge cell clicks
+    el.querySelectorAll('.challenge-cell:not(.locked):not(.completed)').forEach(cell => {
+        cell.addEventListener('click', () => {
+            const day = parseInt(cell.dataset.day);
+            if (day !== state.challengeDay) return;
+            completeChallengeDay(day);
+        });
+    });
+}
+
+// ===================== JADWAL =====================
+function renderJadwal() {
+    const el = document.getElementById('tab-jadwal');
+    const scheds = todaySchedules();
+    const done = scheds.filter(s => s.done).length;
+
+    el.innerHTML = `
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="text-lg font-bold text-bark">Jadwal Hari Ini</h2>
+                <p class="text-xs text-bark-muted font-semibold">${done} dari ${scheds.length} selesai</p>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-sage-pale flex items-center justify-center">
+                <i class="fa-solid fa-calendar-days text-sage text-sm"></i>
+            </div>
+        </div>
+        ${scheds.length === 0 ? `
+            <div class="text-center py-16">
+                <div class="w-20 h-20 rounded-full bg-sage-pale flex items-center justify-center mx-auto mb-4">
+                    <i class="fa-solid fa-calendar-plus text-sage text-2xl"></i>
+                </div>
+                <p class="text-sm font-bold text-bark">Belum ada jadwal</p>
+                <p class="text-xs text-bark-muted mt-1">Tap tombol + untuk menambahkan</p>
+            </div>
+        ` : `
+            <div class="flex flex-col gap-2.5">
+                ${scheds.map((s, i) => {
+                    const cat = getCatInfo(SCHED_CATS, s.category);
+                    const isPast = s.time < new Date().toTimeString().slice(0,5) && !s.done;
+                    return `<div class="schedule-item ${s.done?'done':''} slide-in" style="animation-delay:${i*0.05}s">
+                        <div class="sched-check ${s.done?'checked':''}" data-id="${s.id}">
+                            <i class="fa-solid fa-check"></i>
+                        </div>
+                        <div class="flex-shrink-0 w-12 text-center">
+                            <span class="text-sm font-bold ${isPast ? 'text-bark-muted' : 'text-bark'}">${s.time}</span>
+                        </div>
+                        <div class="w-1 h-8 rounded-full flex-shrink-0" style="background:${cat.color}"></div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-bark sched-text truncate">${s.text}</p>
+                            <span class="text-[0.65rem] font-bold px-2 py-0.5 rounded-md inline-block mt-1" style="background:${cat.bg};color:${cat.color}">${cat.label}</span>
+                        </div>
+                        <button class="w-8 h-8 rounded-lg flex items-center justify-center text-bark-muted hover:text-red-400 hover:bg-red-50 transition-colors del-sched" data-id="${s.id}" aria-label="Hapus">
+                            <i class="fa-solid fa-xmark text-sm"></i>
+                        </button>
+                    </div>`;
+                }).join('')}
+            </div>
+        `}
+    `;
+
+    // Event: toggle done
+    el.querySelectorAll('.sched-check').forEach(chk => {
+        chk.addEventListener('click', () => {
+            const id = parseFloat(chk.dataset.id);
+            const s = state.schedules.find(x => x.id === id);
+            if (s) { s.done = !s.done; saveState(); renderJadwal(); checkAchievements(); }
+        });
+    });
+    // Event: delete
+    el.querySelectorAll('.del-sched').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = parseFloat(btn.dataset.id);
+            state.schedules = state.schedules.filter(x => x.id !== id);
+            saveState(); renderJadwal(); showToast('Jadwal dihapus', 'warn');
+        });
+    });
+}
+
+function openAddSchedule() {
+    openModal(`
+        <h3 class="text-base font-bold text-bark mb-4">Tambah Jadwal</h3>
+        <input type="text" class="input-field mb-3" id="inp-sched-text" placeholder="Apa yang mau dikerjakan?" maxlength="80" autofocus>
+        <input type="time" class="input-field mb-3" id="inp-sched-time" value="${new Date().toTimeString().slice(0,5)}">
+        <p class="text-xs font-bold text-bark-muted mb-2">Kategori</p>
+        <div class="flex flex-wrap gap-2 mb-5" id="sched-cat-picker">
+            ${SCHED_CATS.map(c => `<div class="cat-pill ${c.id==='lainnya'?'selected':''}" data-cat="${c.id}" style="${c.id==='lainnya'?`background:${c.color};border-color:transparent;color:#fff`:''}">${c.label}</div>`).join('')}
+        </div>
+        <button class="w-full py-3 rounded-2xl font-bold text-sm text-white transition-all active:scale-95" style="background:linear-gradient(135deg,#E07B5F,#D4A56A)" id="btn-save-sched">Simpan Jadwal</button>
+    `);
+    let selectedCat = 'lainnya';
+    document.querySelectorAll('#sched-cat-picker .cat-pill').forEach(p => {
+        p.addEventListener('click', () => {
+            selectedCat = p.dataset.cat;
+            const cat = getCatInfo(SCHED_CATS, selectedCat);
+            document.querySelectorAll('#sched-cat-picker .cat-pill').forEach(pp => {
+                const c = getCatInfo(SCHED_CATS, pp.dataset.cat);
+                if (pp.dataset.cat === selectedCat) {
+                    pp.classList.add('selected'); pp.style.background = c.color; pp.style.borderColor = 'transparent'; pp.style.color = '#fff';
+                } else {
+                    pp.classList.remove('selected'); pp.style.background = '#fff'; pp.style.borderColor = ''; pp.style.color = '';
+                }
+            });
+        });
+    });
+    document.getElementById('btn-save-sched').addEventListener('click', () => {
+        const text = document.getElementById('inp-sched-text').value.trim();
+        const time = document.getElementById('inp-sched-time').value;
+        if (!text) { showToast('Isi nama jadwal dulu ya', 'warn'); return; }
+        state.schedules.push({ id: genId(), text, time, category: selectedCat, done: false, date: today() });
+        saveState(); closeModal(); renderJadwal(); showToast('Jadwal ditambahkan!');
+        checkAchievements();
+    });
+}
+
+// ===================== PENGELUARAN =====================
+function renderPengeluaran() {
+    const el = document.getElementById('tab-pengeluaran');
+    const tExp = todayExpenses().reduce((s,e) => s + e.amount, 0);
+    const budgetPct = Math.min(100, (tExp / state.dailyBudget) * 100);
+    const budgetColor = budgetPct > 90 ? '#D4605A' : budgetPct > 70 ? '#D4A56A' : '#6D9B7A';
+
+    el.innerHTML = `
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="text-lg font-bold text-bark">Pengeluaran</h2>
+                <p class="text-xs text-bark-muted font-semibold">Hari ini: ${fmt(tExp)}</p>
+            </div>
+            <div class="w-10 h-10 rounded-xl bg-coral-pale flex items-center justify-center">
+                <i class="fa-solid fa-wallet text-coral text-sm"></i>
+            </div>
+        </div>
+
+        <!-- Budget Bar -->
+        <div class="card p-4 mb-4">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-sm font-bold text-bark">Budget Hari Ini</span>
+                <span class="text-xs font-bold ${budgetPct>90?'text-red-500':'text-bark-muted'}">${budgetPct.toFixed(0)}%</span>
+            </div>
+            <div class="progress-track" style="height:12px">
+                <div class="progress-fill" style="width:${budgetPct}%;background:${budgetColor}"></div>
+            </div>
+            <div class="flex justify-between mt-2">
+                <span class="text-[0.65rem] font-semibold text-bark-muted">${fmt(tExp)} terpakai</span>
+                <span class="text-[0.65rem] font-semibold text-bark-muted">${fmt(Math.max(0, state.dailyBudget - tExp))} sisa</span>
+            </div>
+        </div>
+
+        <!-- Quick Add -->
+        <div class="flex flex-wrap gap-2 mb-4">
+            ${[5000,10000,15000,20000,25000,50000].map(a => `
+                <button class="quick-btn" data-amount="${a}">${fmtShort(a)}</button>
+            `).join('')}
+        </div>
+
+        <!-- Chart -->
+        <div class="card p-4 mb-4">
+            <h3 class="text-sm font-bold text-bark mb-3">Kategori Hari Ini</h3>
+            ${tExp > 0 ? `
+                <div class="flex items-center gap-4">
+                    <div style="width:120px;height:120px;flex-shrink:0"><canvas id="expense-chart"></canvas></div>
+                    <div class="flex-1 flex flex-col gap-1.5">
+                        ${getCategoryTotals().map(c => `
+                            <div class="flex items-center gap-2">
+                                <div class="w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:${c.color}"></div>
+                                <span class="text-[0.7rem] font-semibold text-bark-light flex-1">${c.label}</span>
+                                <span class="text-[0.7rem] font-bold text-bark">${fmtShort(c.total)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : `<p class="text-xs text-bark-muted text-center py-6">Belum ada pengeluaran hari ini</p>`}
+        </div>
+
+        <!-- Weekly -->
+        <div class="card p-4 mb-4">
+            <h3 class="text-sm font-bold text-bark mb-3">7 Hari Terakhir</h3>
+            <div style="height:140px"><canvas id="weekly-chart"></canvas></div>
+        </div>
+
+        <!-- List -->
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-bold text-bark">Riwayat Hari Ini</h3>
+            <span class="text-xs text-bark-muted font-semibold">${todayExpenses().length} transaksi</span>
+        </div>
+        ${todayExpenses().length === 0 ? `
+            <div class="text-center py-10">
+                <div class="w-16 h-16 rounded-full bg-coral-pale flex items-center justify-center mx-auto mb-3">
+                    <i class="fa-solid fa-receipt text-coral text-xl"></i>
+                </div>
+                <p class="text-sm font-bold text-bark">Belum ada pengeluaran</p>
+                <p class="text-xs text-bark-muted mt-1">Gunakan quick-add atau tombol +</p>
+            </div>
+        ` : `
+            <div class="flex flex-col gap-2">
+                ${todayExpenses().slice().reverse().map((e, i) => {
+                    const cat = getCatInfo(EXPENSE_CATS, e.category);
+                    return `<div class="expense-item slide-in" style="animation-delay:${i*0.04}s">
+                        <div class="expense-icon" style="background:${cat.bg};color:${cat.color}"><i class="fa-solid ${cat.icon}"></i></div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-bark truncate">${e.text}</p>
+                            <p class="text-[0.65rem] text-bark-muted font-semibold">${cat.label}</p>
+                        </div>
+                        <span class="text-sm font-bold text-coral flex-shrink-0">-${fmt(e.amount)}</span>
+                        <button class="w-7 h-7 rounded-lg flex items-center justify-center text-bark-muted hover:text-red-400 hover:bg-red-50 transition-colors del-exp" data-id="${e.id}" aria-label="Hapus">
+                            <i class="fa-solid fa-xmark text-xs"></i>
+                        </button>
+                    </div>`;
+                }).join('')}
+            </div>
+        `}
+    `;
+
+    // Quick add events
+    el.querySelectorAll('.quick-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const amount = parseInt(btn.dataset.amount);
+            openQuickExpense(amount);
+        });
+    });
+    // Delete events
+    el.querySelectorAll('.del-exp').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = parseFloat(btn.dataset.id);
+            state.expenses = state.expenses.filter(x => x.id !== id);
+            saveState(); renderPengeluaran(); showToast('Pengeluaran dihapus', 'warn');
+        });
+    });
+
+    // Render charts
+    if (tExp > 0) renderExpenseChart();
+    renderWeeklyChart();
+}
+
+function getCategoryTotals() {
+    const map = {};
+    todayExpenses().forEach(e => { map[e.category] = (map[e.category] || 0) + e.amount; });
+    return Object.entries(map).map(([cat, total]) => {
+        const info = getCatInfo(EXPENSE_CATS, cat);
+        return { label: info.label, color: info.color, total };
+    }).sort((a,b) => b.total - a.total);
+}
+
+function renderExpenseChart() {
+    const ctx = document.getElementById('expense-chart');
+    if (!ctx) return;
+    if (expenseChart) expenseChart.destroy();
+    const data = getCategoryTotals();
+    expenseChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.map(d => d.label),
+            datasets: [{ data: data.map(d => d.total), backgroundColor: data.map(d => d.color), borderWidth: 0, borderRadius: 4 }]
+        },
+        options: {
+            cutout: '65%', responsive: true, maintainAspectRatio: true,
+            plugins: { legend: { display: false }, tooltip: { bodyFont: { family: 'Quicksand', weight: '600' }, callbacks: { label: ctx => ' ' + fmt(ctx.parsed) } } }
+        }
+    });
+}
+
+function renderWeeklyChart() {
+    const ctx = document.getElementById('weekly-chart');
+    if (!ctx) return;
+    const data = getWeekExpenses();
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(d => d.label),
+            datasets: [{ data: data.map(d => d.total), backgroundColor: data.map((_,i) => i === 6 ? '#E07B5F' : '#EDE5DA'), borderRadius: 8, borderSkipped: false, barThickness: 24 }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { family: 'Quicksand', size: 10, weight: '600' }, color: '#B5A89A' } },
+                y: { display: false, beginAtZero: true }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: { bodyFont: { family: 'Quicksand', weight: '600' }, callbacks: { label: ctx => fmt(ctx.parsed.y) } }
+            }
+        }
+    });
+}
+
+function openQuickExpense(amount) {
+    openModal(`
+        <h3 class="text-base font-bold text-bark mb-1">Quick Add</h3>
+        <p class="text-2xl font-bold text-coral mb-4">${fmt(amount)}</p>
+        <input type="text" class="input-field mb-3" id="inp-qexp-text" placeholder="Keterangan (opsional)" maxlength="50">
+        <p class="text-xs font-bold text-bark-muted mb-2">Kategori</p>
+        <div class="flex flex-wrap gap-2 mb-5" id="qexp-cat-picker">
+            ${EXPENSE_CATS.map(c => `<div class="cat-pill ${c.id==='makanan'?'selected':''}" data-cat="${c.id}" style="${c.id==='makanan'?`background:${c.color};border-color:transparent;color:#fff`:''}">${c.label}</div>`).join('')}
+        </div>
+        <button class="w-full py-3 rounded-2xl font-bold text-sm text-white transition-all active:scale-95" style="background:linear-gradient(135deg,#E07B5F,#D4A56A)" id="btn-save-qexp">Simpan</button>
+    `);
+    let selectedCat = 'makanan';
+    document.querySelectorAll('#qexp-cat-picker .cat-pill').forEach(p => {
+        p.addEventListener('click', () => {
+            selectedCat = p.dataset.cat;
+            const cat = getCatInfo(EXPENSE_CATS, selectedCat);
+            document.querySelectorAll('#qexp-cat-picker .cat-pill').forEach(pp => {
+                const c = getCatInfo(EXPENSE_CATS, pp.dataset.cat);
+                if (pp.dataset.cat === selectedCat) {
+                    pp.classList.add('selected'); pp.style.background = c.color; pp.style.borderColor = 'transparent'; pp.style.color = '#fff';
+                } else {
+                    pp.classList.remove('selected'); pp.style.background = '#fff'; pp.style.borderColor = ''; pp.style.color = '';
+                }
+            });
+        });
+    });
+    document.getElementById('btn-save-qexp').addEventListener('click', () => {
+        const text = document.getElementById('inp-qexp-text').value.trim() || getCatInfo(EXPENSE_CATS, selectedCat).label;
+        state.expenses.push({ id: genId(), text, amount, category: selectedCat, date: today() });
+        saveState(); closeModal(); renderPengeluaran();
+        showToast(`${fmt(amount)} dicatat!`);
+        checkBudget();
+        checkAchievements();
+    });
+}
+
+function openAddExpense() {
+    openModal(`
+        <h3 class="text-base font-bold text-bark mb-4">Tambah Pengeluaran</h3>
+        <input type="text" class="input-field mb-3" id="inp-exp-text" placeholder="Keterangan" maxlength="50" autofocus>
+        <input type="number" class="input-field mb-3" id="inp-exp-amount" placeholder="Nominal (contoh: 25000)" min="0" inputmode="numeric">
+        <p class="text-xs font-bold text-bark-muted mb-2">Kategori</p>
+        <div class="flex flex-wrap gap-2 mb-5" id="exp-cat-picker">
+            ${EXPENSE_CATS.map(c => `<div class="cat-pill ${c.id==='makanan'?'selected':''}" data-cat="${c.id}" style="${c.id==='makanan'?`background:${c.color};border-color:transparent;color:#fff`:''}">${c.label}</div>`).join('')}
+        </div>
+        <button class="w-full py-3 rounded-2xl font-bold text-sm text-white transition-all active:scale-95" style="background:linear-gradient(135deg,#E07B5F,#D4A56A)" id="btn-save-exp">Simpan</button>
+    `);
+    let selectedCat = 'makanan';
+    document.querySelectorAll('#exp-cat-picker .cat-pill').forEach(p => {
+        p.addEventListener('click', () => {
+            selectedCat = p.dataset.cat;
+            const cat = getCatInfo(EXPENSE_CATS, selectedCat);
+            document.querySelectorAll('#exp-cat-picker .cat-pill').forEach(pp => {
+                const c = getCatInfo(EXPENSE_CATS, pp.dataset.cat);
+                if (pp.dataset.cat === selectedCat) {
+                    pp.classList.add('selected'); pp.style.background = c.color; pp.style.borderColor = 'transparent'; pp.style.color = '#fff';
+                } else {
+                    pp.classList.remove('selected'); pp.style.background = '#fff'; pp.style.borderColor = ''; pp.style.color = '';
+                }
+            });
+        });
+    });
+    document.getElementById('btn-save-exp').addEventListener('click', () => {
+        const text = document.getElementById('inp-exp-text').value.trim();
+        const amount = parseInt(document.getElementById('inp-exp-amount').value);
+        if (!text) { showToast('Isi keterangan dulu ya', 'warn'); return; }
+        if (!amount || amount <= 0) { showToast('Masukkan nominal yang valid', 'warn'); return; }
+        state.expenses.push({ id: genId(), text, amount, category: selectedCat, date: today() });
+        saveState(); closeModal(); renderPengeluaran();
+        showToast(`${fmt(amount)} dicatat!`);
+        checkBudget(); checkAchievements();
+    });
+}
+
+function checkBudget() {
+    const tExp = todayExpenses().reduce((s,e) => s + e.amount, 0);
+    if (tExp >= state.dailyBudget) {
+        showToast('Budget harian sudah terlampaui!', 'error');
+    } else if (tExp >= state.dailyBudget * 0.8) {
+        showToast('Budget hampir habis, hati-hati!', 'warn');
+    }
+}
+
+// ===================== TABUNGAN =====================
+function renderTabungan() {
+    const el = document.getElementById('tab-tabungan');
+    const g = state.savingsGoal;
+    const pct = g.target > 0 ? Math.min(100, (g.current / g.target) * 100) : 0;
+    const challengeTotal = state.completedChallengeDays.reduce((s,d) => s + challengeAmount(d), 0);
+
+    el.innerHTML = `
+        <!-- Goal Card -->
+        <div class="card p-5 mb-4 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10" style="background:#6D9B7A;transform:translate(30%,-30%)"></div>
+            <div class="flex items-center gap-2 mb-1">
+                <i class="fa-solid fa-bullseye text-sage text-sm"></i>
+                <span class="text-xs font-bold text-sage uppercase tracking-wider">Target Tabungan</span>
+            </div>
+            <h3 class="text-lg font-bold text-bark mb-1">${g.name}</h3>
+            <p class="text-2xl font-bold text-sage mb-1">${fmt(g.current)}</p>
+            <p class="text-xs text-bark-muted font-semibold mb-3">dari ${fmt(g.target)}</p>
+            <div class="progress-track" style="height:14px">
+                <div class="progress-fill" style="width:${pct}%;background:linear-gradient(90deg,#6D9B7A,#B8D4BF);border-radius:20px"></div>
+            </div>
+            <div class="flex justify-between mt-2">
+                <span class="text-xs font-bold text-sage">${pct.toFixed(1)}% tercapai</span>
+                <span class="text-xs font-bold text-bark-muted">${fmt(Math.max(0, g.target - g.current))} lagi</span>
+            </div>
+        </div>
+
+        <!-- Quick Deposit -->
+        <div class="flex flex-wrap gap-2 mb-4">
+            ${[10000, 25000, 50000, 100000].map(a => `
+                <button class="quick-btn text-sage border-sage-light hover:bg-sage-pale" data-deposit="${a}">
+                    <i class="fa-solid fa-plus text-[0.6rem] mr-1"></i>${fmtShort(a)}
+                </button>
+            `).join('')}
+        </div>
+
+        <!-- Settings -->
+        <div class="card p-4 mb-4">
+            <h3 class="text-sm font-bold text-bark mb-3"><i class="fa-solid fa-gear text-bark-muted mr-2"></i>Pengaturan</h3>
+            <div class="mb-3">
+                <label class="text-xs font-bold text-bark-muted block mb-1">Nama Target</label>
+                <input type="text" class="input-field text-sm" id="inp-goal-name" value="${g.name}" maxlength="40">
+            </div>
+            <div class="mb-3">
+                <label class="text-xs font-bold text-bark-muted block mb-1">Jumlah Target</label>
+                <input type="number" class="input-field text-sm" id="inp-goal-target" value="${g.target}" min="0" inputmode="numeric">
+            </div>
+            <div>
+                <label class="text-xs font-bold text-bark-muted block mb-1">Budget Harian</label>
+                <input type="number" class="input-field text-sm" id="inp-daily-budget" value="${state.dailyBudget}" min="0" inputmode="numeric">
+            </div>
+            <button class="w-full py-2.5 rounded-xl font-bold text-sm bg-sage text-white mt-4 active:scale-95 transition-transform" id="btn-save-settings">Simpan Pengaturan</button>
+        </div>
+
+        <!-- Challenge -->
+        <div class="card p-4 mb-4">
+            <div class="flex items-center gap-2 mb-1">
+                <i class="fa-solid fa-bolt text-gold text-sm"></i>
+                <span class="text-sm font-bold text-bark">Tantangan 30 Hari</span>
+            </div>
+            <p class="text-xs text-bark-muted mb-3">Nabung Rp1.000 - Rp30.000 per hari. Total: ${fmt(465000)}</p>
+            <div class="grid grid-cols-6 gap-2 mb-3">
+                ${Array.from({length:30}, (_,i) => {
+                    const done = state.completedChallengeDays.includes(i);
+                    const curr = i === state.challengeDay;
+                    const locked = i > state.challengeDay;
+                    return `<div class="challenge-cell ${done?'completed':''} ${curr?'current':''} ${locked?'locked':''}" data-day="${i}">${i+1}</div>`;
+                }).join('')}
+            </div>
+            <p class="text-xs font-semibold text-bark-muted">Terkumpul: <span class="text-gold font-bold">${fmt(challengeTotal)}</span> (${state.completedChallengeDays.length}/30 hari)</p>
+        </div>
+
+        <!-- Achievements -->
+        <div class="card p-4 mb-4">
+            <h3 class="text-sm font-bold text-bark mb-3"><i class="fa-solid fa-trophy text-gold mr-2"></i>Pencapaian</h3>
+            <div class="grid grid-cols-5 gap-3">
+                ${ACHIEVEMENTS.map(a => {
+                    const unlocked = state.achievements.includes(a.id);
+                    return `<div class="flex flex-col items-center gap-1" title="${a.name}: ${a.desc}">
+                        <div class="badge ${unlocked ? 'unlocked' : 'locked'}" style="${unlocked ? `background:${a.bg};color:${a.color}` : ''}">
+                            <i class="fa-solid ${a.icon}"></i>
+                        </div>
+                        <span class="text-[0.55rem] font-bold ${unlocked?'text-bark':'text-bark-muted'} text-center leading-tight">${a.name}</span>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>
+
+        <!-- Tips -->
+        <div class="card p-4 mb-4 bg-gradient-to-br from-cream to-cream-dark border-0">
+            <h3 class="text-sm font-bold text-bark mb-2"><i class="fa-solid fa-lightbulb text-gold mr-2"></i>Tips Hemat Gen Z</h3>
+            <ul class="text-xs text-bark-light font-semibold space-y-1.5 leading-relaxed">
+                <li><span class="text-coral mr-1">1.</span>Gunakan metode 50/30/20: kebutuhan, keinginan, tabungan</li>
+                <li><span class="text-coral mr-1">2.</span>Review pengeluaran setiap malam sebelum tidur</li>
+                <li><span class="text-coral mr-1">3.</span>Masak sendiri bisa hemat 40% budget makan</li>
+                <li><span class="text-coral mr-1">4.</span>Tidak perlu FOMO, banyak yang bisa dinikmati gratis</li>
+                <li><span class="text-coral mr-1">5.</span>Set autopengingat buat bayar tagihan sebelum jatuh tempo</li>
+            </ul>
+        </div>
+    `;
+
+    // Quick deposit
+    el.querySelectorAll('[data-deposit]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const amount = parseInt(btn.dataset.deposit);
+            depositSavings(amount);
+        });
+    });
+
+    // Challenge cells
+    el.querySelectorAll('.challenge-cell:not(.locked):not(.completed)').forEach(cell => {
+        cell.addEventListener('click', () => {
+            const day = parseInt(cell.dataset.day);
+            if (day !== state.challengeDay) return;
+            completeChallengeDay(day);
+        });
+    });
+
+    // Settings
+    document.getElementById('btn-save-settings').addEventListener('click', () => {
+        const name = document.getElementById('inp-goal-name').value.trim();
+        const target = parseInt(document.getElementById('inp-goal-target').value);
+        const budget = parseInt(document.getElementById('inp-daily-budget').value);
+        if (!name) { showToast('Nama target tidak boleh kosong', 'warn'); return; }
+        if (!target || target <= 0) { showToast('Jumlah target tidak valid', 'warn'); return; }
+        if (!budget || budget <= 0) { showToast('Budget harian tidak valid', 'warn'); return; }
+        state.savingsGoal.name = name;
+        state.savingsGoal.target = target;
+        state.dailyBudget = budget;
+        saveState(); renderTabungan(); showToast('Pengaturan disimpan!');
+    });
+}
+
+function depositSavings(amount) {
+    state.savingsGoal.current += amount;
+    updateStreak();
+    saveState(); renderTabungan();
+    showToast(`+${fmt(amount)} ditabung!`);
+    checkAchievements();
+}
+
+function openAddSavings() {
+    openModal(`
+        <h3 class="text-base font-bold text-bark mb-4">Tambah Tabungan</h3>
+        <input type="number" class="input-field mb-4" id="inp-save-amount" placeholder="Nominal (contoh: 50000)" min="0" inputmode="numeric" autofocus>
+        <button class="w-full py-3 rounded-2xl font-bold text-sm text-white transition-all active:scale-95" style="background:linear-gradient(135deg,#6D9B7A,#B8D4BF)" id="btn-save-deposit">Nabung Sekarang</button>
+    `);
+    document.getElementById('btn-save-deposit').addEventListener('click', () => {
+        const amount = parseInt(document.getElementById('inp-save-amount').value);
+        if (!amount || amount <= 0) { showToast('Masukkan nominal yang valid', 'warn'); return; }
+        depositSavings(amount);
+        closeModal();
+    });
+}
+
+function completeChallengeDay(day) {
+    if (state.completedChallengeDays.includes(day)) return;
+    state.completedChallengeDays.push(day);
+    const amount = challengeAmount(day);
+    state.savingsGoal.current += amount;
+    state.challengeDay = day + 1;
+    updateStreak();
+    saveState();
+    showToast(`Hari ${day+1} selesai! +${fmt(amount)}`, 'success');
+    renderTabungan();
+    if (currentTab === 'home') renderHome();
+    checkAchievements();
+}
+
+function updateStreak() {
+    const todayStr = today();
+    if (state.lastSaveDate === todayStr) return;
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    if (state.lastSaveDate === yesterdayStr) {
+        state.streak += 1;
+    } else {
+        state.streak = 1;
+    }
+    state.lastSaveDate = todayStr;
+    document.getElementById('streak-count').textContent = state.streak;
+}
+
+// ===================== ACHIEVEMENTS =====================
+function checkAchievements() {
+    const checks = {
+        first_expense: () => state.expenses.length >= 1,
+        first_sched: () => state.schedules.length >= 1,
+        planner5: () => state.schedules.length >= 5,
+        save_first: () => state.savingsGoal.current > 0,
+        save_100k: () => state.savingsGoal.current >= 100000,
+        save_500k: () => state.savingsGoal.current >= 500000,
+        streak3: () => state.streak >= 3,
+        streak7: () => state.streak >= 7,
+        expense10: () => state.expenses.length >= 10,
+        challenge10: () => state.completedChallengeDays.length >= 10,
+    };
+    for (const [id, fn] of Object.entries(checks)) {
+        if (!state.achievements.includes(id) && fn()) {
+            state.achievements.push(id);
+            const a = ACHIEVEMENTS.find(x => x.id === id);
+            if (a) showToast(`Pencapaian: ${a.name}!`, 'achievement');
+        }
+    }
+    saveState();
+}
+
+// ===================== PENGINGAT =====================
+function checkReminders() {
+    const now = new Date();
+    const currentTime = now.toTimeString().slice(0, 5);
+    const scheds = todaySchedules().filter(s => !s.done && s.time === currentTime);
+    scheds.forEach(s => {
+        showToast(`Pengingat: ${s.text} (${s.time})`, 'warn');
+    });
+}
+
+// ===================== HEADER =====================
+function updateHeader() {
+    document.getElementById('header-greeting').textContent = getGreeting();
+    document.getElementById('header-date').textContent = getTodayLabel();
+    document.getElementById('streak-count').textContent = state.streak;
+}
+
+// ===================== INIT =====================
+function init() {
+    loadState();
+    updateHeader();
+
+    // Splash
+    setTimeout(() => {
+        document.getElementById('splash').classList.add('hide');
+        setTimeout(() => document.getElementById('splash').remove(), 600);
+    }, 1500);
+
+    // FAB tersembunyi di home
+    document.getElementById('fab-btn').style.display = 'none';
+
+    // Render home
+    renderHome();
+
+    // Pengingat setiap 30 detik
+    reminderInterval = setInterval(checkReminders, 30000);
+    checkReminders();
+
+    // Cek pencapaian awal
+    setTimeout(checkAchievements, 2000);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
